@@ -1,0 +1,2578 @@
+<title>勝芳進銷存 Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+TC:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --paper:#F1F0EA; --surface:#FBFAF6; --surface-2:#E9E8E1; --surface-3:#F5F4EF;
+  --line:#D8D7CE; --line-strong:#BCBBB0;
+  --ink:#1E2422; --ink-2:#5A625F; --ink-3:#8A918C;
+  --accent:#0F6E6E; --accent-ink:#0B5252; --accent-soft:#DCEBEA;
+  --kraft:#8A6A3A; --kraft-soft:#EFE6D6;
+  --good:#3F7D3A; --good-soft:#E3EFDF;
+  --warn:#A9700F; --warn-soft:#F7EBD4;
+  --crit:#A63A2C; --crit-soft:#F6E1DD;
+  --info:#3C5A94; --info-soft:#E2E9F6;
+  --shadow:0 1px 2px rgba(30,36,34,.06), 0 8px 20px -14px rgba(30,36,34,.35);
+  --r:4px;
+  --sans:"IBM Plex Sans TC","IBM Plex Sans","Noto Sans TC","PingFang TC","微軟正黑體","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Consolas,"Noto Sans TC",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#131714; --surface:#1A1F1C; --surface-2:#232925; --surface-3:#1F2521;
+    --line:#2D3531; --line-strong:#465049;
+    --ink:#E7EBE6; --ink-2:#A2ADA7; --ink-3:#77827C;
+    --accent:#5AC1B6; --accent-ink:#8FDCD4; --accent-soft:#123330;
+    --kraft:#C4A173; --kraft-soft:#2E2519;
+    --good:#79C46B; --good-soft:#18301A;
+    --warn:#DCA748; --warn-soft:#33270F;
+    --crit:#E57865; --crit-soft:#371D18;
+    --info:#87A8E2; --info-soft:#19233A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 24px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131714; --surface:#1A1F1C; --surface-2:#232925; --surface-3:#1F2521;
+  --line:#2D3531; --line-strong:#465049;
+  --ink:#E7EBE6; --ink-2:#A2ADA7; --ink-3:#77827C;
+  --accent:#5AC1B6; --accent-ink:#8FDCD4; --accent-soft:#123330;
+  --kraft:#C4A173; --kraft-soft:#2E2519;
+  --good:#79C46B; --good-soft:#18301A;
+  --warn:#DCA748; --warn-soft:#33270F;
+  --crit:#E57865; --crit-soft:#371D18;
+  --info:#87A8E2; --info-soft:#19233A;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 24px -16px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;font-weight:600;text-wrap:balance;letter-spacing:-.01em}
+p{margin:0}
+table{border-collapse:collapse;width:100%}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.mono{font-family:var(--mono)}
+
+/* ---------- shell ---------- */
+.app{min-height:100dvh;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand b{font-size:15px;font-weight:600;letter-spacing:.02em}
+.brand span{font-size:11px;color:var(--ink-3);letter-spacing:.14em;font-family:var(--mono);text-transform:uppercase}
+.top .sp{flex:1}
+.today{font-size:12px;color:var(--ink-2);font-family:var(--mono)}
+
+.btn{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);padding:6px 12px;border-radius:var(--r);cursor:pointer;font-size:13px;line-height:1.4;transition:background .12s,border-color .12s}
+.btn:hover:not(:disabled){background:var(--surface-2);border-color:var(--ink-3)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500}
+:root[data-theme="dark"] .btn-primary,:root:not([data-theme="light"]) .btn-primary{color:#0A1614}
+.btn-primary:hover:not(:disabled){background:var(--accent-ink);border-color:var(--accent-ink)}
+.btn-sm{padding:3px 9px;font-size:12px}
+.btn-icon{padding:5px 9px}
+
+/* ---------- step pill (reused by delivery status tracker) ---------- */
+.steps{display:flex;gap:2px;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:7px;padding:5px 11px 5px 8px;border-radius:999px;font-size:12px;color:var(--ink-3);background:transparent;border:1px solid transparent;white-space:nowrap}
+.step .n{width:18px;height:18px;border-radius:50%;border:1px solid var(--line-strong);display:grid;place-items:center;font-family:var(--mono);font-size:10px;flex:none}
+.step.done{color:var(--ink-2)}
+.step.done .n{background:var(--good);border-color:var(--good);color:var(--surface)}
+.step.now{color:var(--accent-ink);background:var(--accent-soft);border-color:var(--accent);font-weight:600}
+.step.now .n{border-color:var(--accent);color:var(--accent-ink)}
+
+/* ---------- body ---------- */
+.body{flex:1;display:grid;grid-template-columns:224px minmax(0,1fr);align-items:start}
+.rail{position:sticky;top:47px;background:var(--surface);padding:14px 10px;display:flex;flex-direction:column;gap:1px;border-right:1px solid var(--line)}
+.navitem{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r);border:none;background:none;cursor:pointer;text-align:left;color:var(--ink-2);font-size:13.5px;width:100%}
+.navitem:hover{background:var(--surface-2);color:var(--ink)}
+.navitem[aria-current="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:inset 2px 0 0 var(--accent)}
+.navitem .g{width:18px;text-align:center;color:var(--ink-3);font-size:12px;font-family:var(--mono)}
+.navitem[aria-current="true"] .g{color:var(--accent)}
+.navitem .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.rail hr{border:none;border-top:1px solid var(--line);margin:8px 4px}
+.rail .foot{padding:6px 10px;font-size:11px;color:var(--ink-3);line-height:1.5}
+
+.main{padding:22px 24px 60px;min-width:0}
+.phead{display:flex;align-items:flex-end;gap:14px;margin-bottom:18px;flex-wrap:wrap;position:sticky;top:47px;z-index:15;background:var(--paper);padding-bottom:10px}
+.phead h1{font-size:20px}
+.phead .sub{font-size:12.5px;color:var(--ink-2);padding-bottom:2px}
+.phead .sp{flex:1}
+.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);font-family:var(--mono);margin-bottom:3px}
+.crumb{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-family:var(--mono);margin-bottom:4px}
+.crumb .sep{color:var(--line-strong);letter-spacing:0}
+.crumb .cur{color:var(--ink-2)}
+
+/* ---------- blocks ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.card>h3{padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px;display:flex;align-items:center;gap:8px}
+.card>h3 .sp{flex:1}
+.card .pad{padding:14px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden;margin-bottom:16px}
+.kpi{padding:12px 14px;border-right:1px solid var(--line)}
+.kpi:last-child{border-right:none}
+.kpi .l{font-size:11.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.kpi .v{font-family:var(--mono);font-size:23px;font-weight:500;line-height:1.25;margin-top:2px;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:12px;color:var(--ink-3);font-weight:400;margin-left:3px}
+.kpi.alert .v{color:var(--crit)}
+.kpi.watch .v{color:var(--warn)}
+button.kpi{display:block;width:100%;box-sizing:border-box;border:none;border-right:1px solid var(--line);background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;transition:background .12s,border-color .12s}
+button.kpi:hover{background:var(--surface-3);border-color:var(--ink-3)}
+button.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;position:relative;z-index:1}
+
+/* dashboard stat rows：庫存健康／例外事件 的可點聚合列 */
+.statlist{display:flex;flex-direction:column}
+.statrow{display:flex;align-items:center;gap:10px;width:100%;border:none;background:none;padding:9px 14px;border-bottom:1px solid var(--line);font:inherit;color:inherit;text-align:left;cursor:pointer}
+.statlist>.statrow:last-child{border-bottom:none}
+.statrow:hover{background:var(--surface-3)}
+.statrow:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.statrow .lb{flex:1;font-size:13px;display:flex;align-items:center;gap:7px}
+.statrow .ct{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;font-weight:500}
+.statrow.z .ct,.statrow.z .lb{color:var(--ink-3)}
+.statdiv{border-top:1px dashed var(--line);margin:2px 0}
+.stathead{padding:9px 14px 2px;font-size:11px;letter-spacing:.06em;color:var(--ink-3);text-transform:uppercase}
+
+/* 關聯單據：一份單據引出的下游文件清單，逐列列出「有 / 還沒有」，比橫向欄位表格更好掃描 */
+.doclist{display:flex;flex-direction:column}
+.docrow{display:flex;align-items:baseline;gap:14px;padding:9px 14px;border-bottom:1px solid var(--line)}
+.doclist>.docrow:last-child{border-bottom:none}
+.docrow .lb{flex:none;width:88px;font-size:12px;color:var(--ink-3)}
+.docrow .val{flex:1;font-size:13px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+/* tables */
+.tw{overflow-x:auto}
+.tbl{font-size:13px;min-width:100%}
+.tbl th{text-align:left;font-weight:500;font-size:11px;letter-spacing:.06em;color:var(--ink-3);padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap;text-transform:uppercase;position:sticky;top:0;background:var(--surface);z-index:1}
+.tbl td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+.tbl td.wrap{white-space:normal}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr.click{cursor:pointer}
+.tbl tbody tr.click:hover{background:var(--surface-3)}
+.tbl tbody tr[aria-selected="true"]{background:var(--accent-soft)}
+.tbl .r{text-align:right}
+.tbl .flash{animation:flash 1.6s ease-out}
+@keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+.tbl td small{color:var(--ink-3);font-size:11.5px}
+
+/* table toolbar + pagination (Prototype: client-side query pipeline) */
+.tbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--surface-3)}
+.tbar input[type="search"],.tbar select{font:inherit;font-size:12.5px;padding:4px 8px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--surface);color:var(--ink)}
+.tbar input[type="search"]{min-width:180px;flex:1;max-width:300px}
+.tbar .lbl{font-size:11px;color:var(--ink-3);letter-spacing:.04em}
+.tbar .cnt{margin-left:auto;font-size:11.5px;color:var(--ink-3);font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tbl th.s{cursor:pointer;user-select:none}
+.tbl th.s:hover{color:var(--ink-2)}
+.tbl th .ar{font-size:9px;margin-left:3px;color:var(--accent)}
+.tfoot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-top:1px solid var(--line);background:var(--surface-3);font-size:12px;color:var(--ink-2)}
+.tfoot .pg{display:flex;gap:2px;align-items:center;margin-left:auto}
+.pgb{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);padding:2px 8px;border-radius:var(--r);cursor:pointer;font-size:12px;font-family:var(--mono);min-width:28px}
+.pgb:hover:not(:disabled){border-color:var(--ink-3);color:var(--ink)}
+.pgb:disabled{opacity:.4;cursor:not-allowed}
+.pgb[aria-current="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+:root[data-theme="dark"] .pgb[aria-current="true"],:root:not([data-theme="light"]) .pgb[aria-current="true"]{color:#0A1614}
+.pgs{padding:0 4px;color:var(--ink-3)}
+.tfoot select{font:inherit;font-size:12px;padding:2px 6px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--surface);color:var(--ink)}
+
+/* prototype / hypothesis markers */
+.hyp{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;line-height:1.6;color:var(--ink-3);border:1px dashed var(--line-strong);border-radius:3px;padding:0 5px;white-space:nowrap;cursor:help;vertical-align:1px}
+.hyp::before{content:"?";font-family:var(--mono);font-size:9px;opacity:.7}
+.proto{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-2);border:1px dashed var(--line-strong);border-radius:3px;padding:2px 8px;white-space:nowrap;cursor:help}
+.proto b{font-weight:600;color:var(--ink)}
+.hnote{font-size:11.5px;color:var(--ink-3);padding:8px 14px;border-top:1px dashed var(--line);line-height:1.6}
+
+/* supply recommendation panel */
+.rec{border:1px solid var(--accent);border-radius:var(--r);background:var(--accent-soft)}
+.rec>h4{padding:9px 13px;font-size:12.5px;border-bottom:1px solid var(--accent);color:var(--accent-ink);display:flex;align-items:center;gap:8px}
+.rec .recbody{background:var(--surface);padding:0}
+.alloc{display:inline-flex;gap:4px;flex-wrap:wrap}
+.planedit{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px}
+.planqty{display:inline-flex;align-items:center;gap:5px;font-size:11.5px}
+.planqty label{color:var(--ink-3)}
+.planqty input{width:64px;text-align:right;font-family:var(--mono);font-size:12.5px;padding:3px 5px;border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);color:var(--ink)}
+.planqty.g input{border-color:var(--good)}
+.planqty.k input{border-color:var(--kraft)}
+.planqty.i input{border-color:var(--info)}
+
+/* chips & badges */
+.bdg{display:inline-flex;align-items:center;gap:5px;padding:1px 8px;border-radius:999px;font-size:11.5px;line-height:1.7;white-space:nowrap;border:1px solid transparent}
+.bdg::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex:none}
+.bdg.n{background:var(--surface-2);color:var(--ink-2);border-color:var(--line)}
+.bdg.a{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+.bdg.g{background:var(--good-soft);color:var(--good);border-color:var(--good)}
+.bdg.w{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.bdg.c{background:var(--crit-soft);color:var(--crit);border-color:var(--crit)}
+.bdg.i{background:var(--info-soft);color:var(--info);border-color:var(--info)}
+.bdg.k{background:var(--kraft-soft);color:var(--kraft);border-color:var(--kraft)}
+.bdg.sq{border-radius:3px}
+.bdg.sq::before{display:none}
+.doc{font-family:var(--mono);font-size:12.5px;color:var(--accent-ink);background:none;border:none;padding:0;cursor:pointer;border-bottom:1px dotted var(--accent);}
+.doc:hover{color:var(--accent);border-bottom-style:solid}
+.muted{color:var(--ink-2)}
+.dim{color:var(--ink-3)}
+
+/* stock figure group */
+.qtys{display:flex;gap:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.qty{flex:1;padding:9px 12px;border-right:1px solid var(--line);min-width:88px}
+.qty:last-child{border-right:none}
+.qty .l{font-size:11px;color:var(--ink-3)}
+.qty .v{font-family:var(--mono);font-size:17px;font-variant-numeric:tabular-nums}
+.qty.hi .v{color:var(--accent-ink);font-weight:500}
+.qty.res .v{color:var(--warn)}
+.qty.inc .v{color:var(--info)}
+
+
+/* exception list */
+.exc{display:flex;flex-direction:column}
+.exc>div{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px}
+.exc>div:last-child{border-bottom:none}
+.exc .t{flex:1;min-width:0}
+.exc .t b{font-weight:500}
+.exc .t p{font-size:12px;color:var(--ink-2);margin-top:1px}
+
+/* detail panels */
+.dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 18px}
+.dl>div .l{font-size:11px;color:var(--ink-3);letter-spacing:.04em}
+.dl>div .v{font-size:13.5px}
+/* 主檔可編輯欄位：直接借用 .dl 的標籤／值排版，值換成 input/select 就變成可編輯表單，
+   跟其他頁面唯讀的 .dl 視覺語言一致，不用另外學一套介面。 */
+.dl>div .v input,.dl>div .v select{width:100%;font:inherit;font-size:13px;padding:5px 7px;border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);color:var(--ink)}
+/* 主/從（Master-Detail）雙欄：欄框固定在視窗內，資料多時欄內自行 scroll，
+   不讓整頁跟著資料筆數往下長（避免切換清單項目時視窗跳動）。 */
+.split{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:14px;height:calc(100dvh - 240px);min-height:420px}
+.split>.card{display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden}
+.split>.card>.tw{flex:1;min-height:0;overflow-y:auto}
+.split>div{height:100%;min-height:0;overflow-y:auto}
+@media (max-width:1080px){
+  .split{grid-template-columns:1fr;height:auto;min-height:0}
+  .split>.card{height:auto;overflow:visible}
+  .split>.card>.tw{overflow-y:visible}
+  .split>div{height:auto;overflow-y:visible}
+}
+.actbar{display:flex;gap:8px;flex-wrap:wrap;padding:12px 14px;border-top:1px solid var(--line);background:var(--surface-3);align-items:center}
+.actbar .note{font-size:12px;color:var(--ink-2)}
+
+/* form */
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11.5px;color:var(--ink-2)}
+.field input,.field select{font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--surface);color:var(--ink)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.tab{border:none;background:none;padding:7px 12px;cursor:pointer;font-size:13px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+
+/* chain */
+.chain{display:flex;flex-direction:column;gap:0}
+.node{border:1px solid var(--line);border-left:3px solid var(--line-strong);background:var(--surface);border-radius:var(--r);padding:10px 13px}
+.node.a{border-left-color:var(--accent)} .node.k{border-left-color:var(--kraft)}
+.node.i{border-left-color:var(--info)} .node.g{border-left-color:var(--good)}
+.node .h{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.node .h b{font-family:var(--mono);font-size:13px;font-weight:500}
+.node .d{font-size:12px;color:var(--ink-2);margin-top:3px}
+.link{height:14px;width:1px;background:var(--line-strong);margin-left:22px}
+.branch{margin-left:22px;padding-left:16px;border-left:1px solid var(--line-strong);display:flex;flex-direction:column;gap:0}
+
+/* toast + modal */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 14px;border-radius:6px;box-shadow:var(--shadow);z-index:60;display:flex;align-items:center;gap:12px;font-size:13px;max-width:min(560px,92vw)}
+.toast button{background:none;border:none;color:var(--accent);font-weight:600;cursor:pointer;font-size:13px;text-decoration:underline;white-space:nowrap}
+:root[data-theme="dark"] .toast,:root:not([data-theme="light"]) .toast{background:var(--surface-2);color:var(--ink);border:1px solid var(--line-strong)}
+.modal{position:fixed;inset:0;background:rgba(20,24,22,.5);z-index:70;display:grid;place-items:center;padding:20px}
+.sheet{background:var(--paper);border:1px solid var(--line-strong);border-radius:6px;box-shadow:var(--shadow);max-width:760px;width:100%;max-height:86vh;overflow:auto}
+.sheet>header{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--paper)}
+.sheet>header h2{font-size:15px}
+.sheet .pad{padding:16px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:900px){
+  .body{grid-template-columns:1fr}
+  .rail{position:sticky;top:47px;z-index:25;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);padding:6px 10px;gap:4px}
+  .rail hr,.rail .foot{display:none}
+  .navitem{width:auto;white-space:nowrap}
+  .navitem .cnt{display:none}
+  .main{padding:16px 14px 48px}
+  .phead{top:88px}
+}
+</style>
+<div class="app">
+  <header class="top">
+    <div class="brand"><b>勝芳紙業</b><span>進銷存系統</span></div>
+    <span class="proto" title="本系統依目前取得資訊建立，流程、欄位與商業規則均待實際作業確認。">需求訪談 <b>原型</b></span>
+    <div class="sp"></div>
+    <div class="today num" id="today"></div>
+    <label class="proto" style="cursor:default;border-style:solid" title="切換示範資料量。大量資料模式用於驗證搜尋、篩選、排序與分頁在大資料下的操作方式。">示範資料
+      <select id="dsmode" style="font:inherit;font-size:11px;border:none;background:none;color:var(--ink);cursor:pointer">
+        <option value="std">標準</option><option value="big">大量</option>
+      </select></label>
+    <button class="btn btn-sm btn-icon" data-act="theme" title="切換淺色／深色">◐</button>
+    <button class="btn btn-sm" data-act="reset">重置示範</button>
+  </header>
+  <div class="body">
+    <nav class="rail" id="rail"></nav>
+    <main class="main" id="main"></main>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div class="modal" id="modal" hidden></div>
+<script>
+"use strict";
+/* =====================================================================
+   勝芳紙業進銷存 — 需求訪談 Prototype
+
+   Prototype Architecture Only：
+     Browser → JavaScript Array → Search / Filter / Sort / Pagination → DOM
+   全部資料在瀏覽器記憶體，無後端、無資料庫、無 build。
+
+   正式 Production Architecture 應為：
+     Browser → API → Application Service → Database
+   並採 server-side pagination / filtering / sorting：
+     SELECT ... FROM ... WHERE ... ORDER BY ... LIMIT ... （或 cursor pagination）
+   正式系統禁止 download all records 後在瀏覽器過濾。
+
+   不可破壞的架構約束：
+     Inventory Ledger 是庫存唯一真相。所有庫存數量都由 Ledger 事件推導，
+     沒有任何 item.qty 欄位可以直接改寫（見 post() / agg()）。
+
+   畫面上標示「示範假設」的規則，均尚未經客戶確認。
+   ===================================================================== */
+/* ====================== 工具 ====================== */
+var TODAY = new Date();
+function d(off){var t=new Date(TODAY.getTime()+off*864e5);return t.getFullYear()+"-"+p2(t.getMonth()+1)+"-"+p2(t.getDate());}
+function p2(n){return n<10?"0"+n:""+n;}
+function md(s){return s?s.slice(5):"";}
+function n0(v){return Number(v).toLocaleString("zh-TW",{maximumFractionDigits:0});}
+function n1(v){return Number(v).toLocaleString("zh-TW",{minimumFractionDigits:1,maximumFractionDigits:1});}
+function q(v){var n=Number(v);return Math.abs(n-Math.round(n))<1e-9?n0(n):n.toLocaleString("zh-TW",{minimumFractionDigits:3,maximumFractionDigits:3});}
+function money(v){return "NT$"+n0(v);}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+function el(id){return document.getElementById(id);}
+
+/* ====================== 種子資料 ====================== */
+function seed(){
+  var DB={
+    token:"T"+Math.random().toString(36).slice(2,9), rev:0,
+    seq:{lg:0,qt:8,so:18,po:11,cv:7,dn:21,iv:14,sc:2,rs:2},
+    warehouses:[
+      {code:"WH-BL",name:"八里主倉",addr:"新北市八里區工廠路 12 號"},
+      {code:"WH-CV",name:"八里加工區",addr:"裁切機台旁暫存區"},
+      {code:"WH-WG",name:"五股週轉倉",addr:"新北市五股區成泰路"}
+    ],
+    items:[
+      {code:"RL-DL80-1092",name:"道林紙 80g 捲筒 1092mm",grade:"道林紙（非塗佈）",gsm:80,form:"捲筒",spec:"寬 1092mm / 芯 3吋",mill:"中華紙漿",uom:"捲",kg:450,safety:4,price:14800,uoms:[["捲",1],["公斤",450]],roll:true},
+      {code:"SH-DL80-787",name:"道林紙 80g 平張 787×1092",grade:"道林紙（非塗佈）",gsm:80,form:"平張",spec:"787 × 1092 mm",mill:"中華紙漿",uom:"令",kg:34.4,safety:30,price:1290,uoms:[["令",1],["張",500],["公斤",34.4]],parent:"RL-DL80-1092"},
+      {code:"SH-ART157-788",name:"銅版紙 157g 四六版 788×1091",grade:"雙面銅版紙",gsm:157,form:"平張",spec:"788 × 1091 mm",mill:"永豐餘",uom:"令",kg:67.5,safety:20,price:2380,uoms:[["令",1],["張",500],["公斤",67.5]]},
+      {code:"RL-KR120-1200",name:"牛皮紙 120g 捲筒 1200mm",grade:"工業用牛皮紙",gsm:120,form:"捲筒",spec:"寬 1200mm / 芯 3吋",mill:"正隆",uom:"捲",kg:520,safety:6,price:16200,uoms:[["捲",1],["公斤",520]],roll:true},
+      {code:"SH-CP250-636",name:"銅版卡 250g 平張 636×889",grade:"單面銅版卡",gsm:250,form:"平張",spec:"636 × 889 mm",mill:"正隆",uom:"令",kg:70.7,safety:12,price:3150,uoms:[["令",1],["張",500],["公斤",70.7]]},
+      {code:"RL-WF70-880",name:"模造紙 70g 捲筒 880mm",grade:"模造紙",gsm:70,form:"捲筒",spec:"寬 880mm / 芯 3吋",mill:"中華紙漿",uom:"捲",kg:380,safety:3,price:11600,uoms:[["捲",1],["公斤",380]],roll:true}
+    ],
+    customers:[
+      {code:"C-101",name:"宏泰印刷",terms:"月結 60 天",ship:"新北市樹林區大安路 388 號",contact:"張課長",
+       prices:{"SH-DL80-787":1250,"RL-KR120-1200":15800},note:"年用量大，道林平張與牛皮捲筒採議定價"},
+      {code:"C-102",name:"大安包裝",terms:"月結 30 天",ship:"桃園市龜山區文化二路 45 號",contact:"李小姐",
+       prices:{"SH-ART157-788":2300},note:"銅版紙長期合約價"},
+      {code:"C-103",name:"佳彩文具",terms:"月結 30 天",ship:"台北市萬華區艋舺大道 210 號",contact:"陳先生",prices:{},note:"適用標準牌價"},
+      {code:"C-104",name:"三重紙器",terms:"票期 90 天",ship:"新北市三重區重新路五段 6 號",contact:"黃廠長",prices:{},note:"適用標準牌價"}
+    ],
+    suppliers:[
+      {code:"S-201",name:"中華紙漿",lead:"7 天",days:7,terms:"月結 45 天"},
+      {code:"S-202",name:"永豐餘",lead:"10 天",days:10,terms:"月結 45 天"},
+      {code:"S-203",name:"正隆",lead:"5 天",days:5,terms:"月結 30 天"}
+    ],
+    ledger:[], reservations:[], quotes:[], sos:[], pos:[], convs:[], dns:[], invoices:[], rolls:[], counts:[]
+  };
+
+  function LG(date,item,wh,qty,event,ref,note,roll){
+    DB.seq.lg++;
+    DB.ledger.push({id:"L"+p2(DB.seq.lg),date:date,item:item,wh:wh,qty:qty,event:event,ref:ref||"",note:note||"",roll:roll||""});
+  }
+
+  /* 期初庫存 */
+  LG(d(-30),"RL-DL80-1092","WH-BL",10,"期初庫存","","年度盤點結轉");
+  LG(d(-30),"SH-DL80-787","WH-BL",15,"期初庫存","","年度盤點結轉");
+  LG(d(-30),"SH-ART157-788","WH-BL",96,"期初庫存","","年度盤點結轉");
+  LG(d(-30),"RL-KR120-1200","WH-BL",2,"期初庫存","","年度盤點結轉");
+  LG(d(-30),"SH-CP250-636","WH-BL",8,"期初庫存","","年度盤點結轉");
+  LG(d(-30),"RL-WF70-880","WH-WG",5,"期初庫存","","年度盤點結轉");
+
+  /* 母捲（捲別管理） */
+  ["0121","0122","0123","0124","0125","0126","0127","0128"].forEach(function(x,i){
+    DB.rolls.push({no:"R-2608-"+x,item:"RL-DL80-1092",wh:i<10?"WH-BL":"WH-BL",kg0:450,kg:450,status:"在庫",src:"進貨"});
+  });
+  DB.rolls.push({no:"R-2607-0088",item:"RL-KR120-1200",wh:"WH-BL",kg0:520,kg:520,status:"在庫",src:"進貨"});
+  DB.rolls.push({no:"R-2607-0089",item:"RL-KR120-1200",wh:"WH-BL",kg0:520,kg:520,status:"在庫",src:"進貨"});
+
+  /* 上週已完成裁切工單（歷史） */
+  DB.convs.push({no:"CV-2609-006",date:d(-6),status:"已完成",wh:"WH-CV",
+    inItem:"RL-DL80-1092",inQty:2,inKg:900,rolls:["R-2608-0119","R-2608-0120"],
+    outItem:"SH-DL80-787",outQty:25,outKg:860,remainKg:0,remainRoll:"",scrapKg:40,yield:95.6,so:""});
+  LG(d(-6),"RL-DL80-1092","WH-BL",-2,"倉別調撥","CV-2609-006","調往八里加工區");
+  LG(d(-6),"RL-DL80-1092","WH-CV",2,"倉別調撥","CV-2609-006","自八里主倉調入");
+  LG(d(-6),"RL-DL80-1092","WH-CV",-2,"裁切領料","CV-2609-006","母捲 R-2608-0119、R-2608-0120");
+  LG(d(-6),"SH-DL80-787","WH-BL",25,"裁切產出","CV-2609-006","裁切完成品入庫");
+
+  /* 既有報價單 */
+  DB.quotes.push({no:"QT-2609-005",cust:"C-104",date:d(-3),valid:d(11),due:d(6),status:"已送出",so:"",
+    lines:[{item:"SH-CP250-636",qty:15,salesQty:15,salesUom:"令",baseQty:15,baseUom:"令",requestedDate:d(6),price:3150,list:3150}]});
+
+  /* 既有銷售單 */
+  DB.sos.push({no:"SO-2609-016",cust:"C-102",date:d(-2),due:d(0),status:"已配置",
+    lines:[{id:1,item:"SH-ART157-788",qty:30,salesQty:30,salesUom:"令",baseQty:30,baseUom:"令",
+      requestedDate:d(0),confirmedQty:30,confirmedDate:d(0),
+      price:2380,fulfill:{stock:30,conversion:0,purchase:0},conv:"",po:"",shipped:0}]});
+  DB.reservations.push({id:"RS-01",so:"SO-2609-016",line:1,item:"SH-ART157-788",wh:"WH-BL",qty:30,status:"open"});
+  DB.sos.push({no:"SO-2609-017",cust:"C-103",date:d(-1),due:d(2),status:"已配置",
+    lines:[{id:1,item:"SH-DL80-787",qty:6,salesQty:6,salesUom:"令",baseQty:6,baseUom:"令",
+      requestedDate:d(2),confirmedQty:6,confirmedDate:d(0),
+      price:1290,fulfill:{stock:6,conversion:0,purchase:0},conv:"",po:"",shipped:0}]});
+  DB.reservations.push({id:"RS-02",so:"SO-2609-017",line:1,item:"SH-DL80-787",wh:"WH-BL",qty:6,status:"open"});
+  /* 客戶已核准、但業務還沒點「產生供應建議」的訂單：牛皮紙捲筒現貨只有 2 捲、又沒有在途採購，
+     需求 8 捲會缺 6 捲。刻意留在「已確認」狀態，讓採購管理的「缺料建議」一開始就有東西可看，
+     不用還要先手動建一張測試訂單才看得到這個功能在做什麼。 */
+  DB.sos.push({no:"SO-2609-018",cust:"C-101",date:d(-1),due:d(5),status:"已確認",
+    lines:[{id:1,item:"RL-KR120-1200",qty:8,salesQty:8,salesUom:"捲",baseQty:8,baseUom:"捲",
+      requestedDate:d(5),confirmedQty:null,confirmedDate:null,
+      price:16200,list:16200,custom:false,fulfill:null,conv:"",po:"",shipped:0}]});
+
+  /* 既有採購單 */
+  DB.pos.push({no:"PO-2608-041",sup:"S-201",date:d(-8),eta:d(3),status:"已確認",so:"",
+    lines:[{id:1,item:"RL-DL80-1092",qty:4,recv:0,cost:12600}]});
+  DB.pos.push({no:"PO-2608-043",sup:"S-203",date:d(-12),eta:d(-1),status:"已確認",so:"",
+    lines:[{id:1,item:"SH-CP250-636",qty:20,recv:0,cost:2680}]});
+
+  /* 既有出貨單 */
+  DB.dns.push({no:"DN-2609-021",date:d(0),so:"SO-2609-016",cust:"C-102",status:"待揀貨",
+    lines:[{item:"SH-ART157-788",soLineId:1,qty:30}],posted:false});
+
+  return DB;
+}
+
+/* ====================== 推導（庫存總帳為唯一真相） ====================== */
+/* 主檔索引（大量資料時避免每次線性搜尋） */
+var _idx=null,_idxKey="";
+function idx(){
+  var key=DB.token+":"+DB.items.length+":"+DB.customers.length+":"+DB.suppliers.length;
+  if(_idx&&_idxKey===key)return _idx;
+  var m={it:{},cu:{},su:{},wh:{}};
+  DB.items.forEach(function(x){m.it[x.code]=x;});
+  DB.customers.forEach(function(x){m.cu[x.code]=x;});
+  DB.suppliers.forEach(function(x){m.su[x.code]=x;});
+  DB.warehouses.forEach(function(x){m.wh[x.code]=x;});
+  _idx=m;_idxKey=key;return m;
+}
+function item(c){return idx().it[c]||null;}
+function cust(c){return idx().cu[c]||null;}
+function supp(c){return idx().su[c]||null;}
+/* 品項主檔上的 mill 只記供應商「名稱」（不是代碼），這裡統一查回完整供應商資料，
+   供應建議、手動調整、確認供應方案、手動開採購單共用同一個查法。 */
+function supForItem(c){var it=item(c);return it&&it.mill?DB.suppliers.filter(function(s){return s.name===it.mill;})[0]||null:null;}
+function whName(c){var w=idx().wh[c];return w?w.name:c;}
+function custName(c){var x=idx().cu[c];return x?x.name:c;}
+function supName(c){var x=idx().su[c];return x?x.name:c;}
+/* 庫存聚合索引：只是把 Ledger 事件加總起來的快取，Ledger 仍是唯一真相。
+   任何寫入資料的動作都會 DB.rev++，快取即失效重算。畫面上沒有任何可直接改寫的庫存欄位。 */
+var _agg=null,_aggKey="";
+function agg(){
+  var key=DB.token+":"+DB.rev;
+  if(_agg&&_aggKey===key)return _agg;
+  var a={oh:{},res:{},inc:{}};
+  DB.ledger.forEach(function(l){
+    a.oh[l.item]=(a.oh[l.item]||0)+l.qty;
+    var k=l.item+"|"+l.wh; a.oh[k]=(a.oh[k]||0)+l.qty;
+  });
+  DB.reservations.forEach(function(r){
+    if(r.status!=="open")return;
+    a.res[r.item]=(a.res[r.item]||0)+r.qty;
+    var k=r.item+"|"+r.wh; a.res[k]=(a.res[k]||0)+r.qty;
+  });
+  DB.pos.forEach(function(po){
+    if(po.status==="已入庫"||po.status==="已取消")return;
+    po.lines.forEach(function(l){a.inc[l.item]=(a.inc[l.item]||0)+(l.qty-l.recv);});
+  });
+  _agg=a;_aggKey=key;return a;
+}
+function rnd3(n){return Math.round(n*1000)/1000;}
+function onHand(it,wh){return rnd3(agg().oh[wh?it+"|"+wh:it]||0);}
+function reserved(it,wh){return rnd3(agg().res[wh?it+"|"+wh:it]||0);}
+function available(it,wh){return rnd3(onHand(it,wh)-reserved(it,wh));}
+function incoming(it){return rnd3(agg().inc[it]||0);}
+/* 庫存有異動的 品項×倉別 組合（供庫存狀態表使用，避免掃描 品項 × 倉別 全笛卡兒積） */
+function stockPairs(){
+  var seen={},out=[];
+  Object.keys(agg().oh).forEach(function(k){
+    if(k.indexOf("|")<0||seen[k])return;
+    seen[k]=1;
+    if(Math.abs(agg().oh[k])<1e-9)return;
+    var p=k.split("|");
+    if(!item(p[0]))return;
+    out.push({item:p[0],wh:p[1]});
+  });
+  return out;
+}
+function p3(n){return n<10?"00"+n:(n<100?"0"+n:""+n);}
+function nextNo(kind){
+  DB.seq[kind]++;
+  var pre={qt:"QT",so:"SO",po:"PO",cv:"CV",dn:"DN",iv:"IV",sc:"SC"}[kind];
+  return pre+"-2609-"+p3(DB.seq[kind]);
+}
+/* 客戶專屬價格：有議定價用議定價，否則用標準牌價 */
+function priceFor(custCode,itemCode){
+  var c=cust(custCode);
+  var list=item(itemCode).price;
+  var own=c&&c.prices?c.prices[itemCode]:null;
+  return {price:own||list,list:list,custom:!!own};
+}
+/* 輸入單位換算回庫存單位 */
+function toStock(itemCode,val,uom){
+  var it=item(itemCode),f=1;
+  it.uoms.forEach(function(u){if(u[0]===uom)f=u[1];});
+  return Math.round(val/f*1000)/1000;
+}
+function findQT(no){return DB.quotes.filter(function(x){return x.no===no;})[0];}
+function findSO(no){return DB.sos.filter(function(x){return x.no===no;})[0];}
+function findPO(no){return DB.pos.filter(function(x){return x.no===no;})[0];}
+function findCV(no){return DB.convs.filter(function(x){return x.no===no;})[0];}
+function findDN(no){return DB.dns.filter(function(x){return x.no===no;})[0];}
+
+/* 唯一的庫存寫入口。禁止任何地方直接改寫品項數量（不存在 item.qty 這種欄位）。 */
+function post(date,it,wh,qty,event,ref,note,roll){
+  DB.seq.lg++;DB.rev++;
+  var row={id:"L"+p2(DB.seq.lg),date:date,item:it,wh:wh,qty:qty,event:event,ref:ref||"",note:note||"",roll:roll||""};
+  DB.ledger.push(row);
+  S.flash.push(row.id);
+  return row;
+}
+/* 建立／消耗庫存保留（影響可用量，但不影響現有量） */
+function reserve(so,line,itemCode,wh,qty){
+  DB.seq.rs++;DB.rev++;
+  var r={id:"RS-"+p2(DB.seq.rs),so:so,line:line,item:itemCode,wh:wh,qty:qty,status:"open"};
+  DB.reservations.push(r);return r;
+}
+
+/* ====================== 大量資料模式 ======================
+   Prototype Architecture Only：資料在瀏覽器記憶體中產生，用於驗證
+   搜尋 / 篩選 / 排序 / 分頁 的操作方式，不是效能基準。
+   正式系統這些資料應存放於資料庫，並以 server-side query 分頁取用。 */
+var LARGE_DATASET_MODE=false;
+var GRADES=["道林紙（非塗佈）","雙面銅版紙","單面銅版卡","工業用牛皮紙","模造紙","白版紙","牛皮卡紙","描圖紙"];
+var MILLS=["中華紙漿","永豐餘","正隆"];
+function generateDemoData(DB,cfg){
+  cfg=cfg||{};
+  var nItem=cfg.items||300,nCust=cfg.customers||100,nSup=cfg.suppliers||30,
+      nSO=cfg.sos||1000,nPO=cfg.pos||500,nLg=cfg.ledger||5000;
+  var s=1;function rand(){s=(s*1103515245+12345)%2147483648;return s/2147483648;}
+  function pick(a){return a[Math.floor(rand()*a.length)];}
+  var gsms=[70,80,100,120,157,200,250,300],widths=[787,880,1092,1200,1560];
+
+  for(var i=0;i<nSup;i++){
+    var days=[5,7,10,14][Math.floor(rand()*4)];
+    DB.suppliers.push({code:"S-3"+p3(i+1),name:"示範供應商 "+p3(i+1),lead:days+" 天",days:days,terms:"月結 45 天"});
+  }
+  for(i=0;i<nCust;i++)
+    DB.customers.push({code:"C-2"+p3(i+1),name:"示範客戶 "+p3(i+1),terms:"月結 30 天",
+      ship:"新北市示範區示範路 "+(i+1)+" 號",contact:"聯絡人 "+p3(i+1),prices:{},note:"適用標準牌價"});
+
+  var genItems=[];
+  for(i=0;i<nItem;i++){
+    var gsm=pick(gsms),roll=rand()<0.4,w=pick(widths),grade=pick(GRADES);
+    var kg=roll?Math.round(300+rand()*300):Math.round((w/1000*1.09*gsm*500/1000)*10)/10;
+    var it={code:"GN-"+p3(i+1),name:grade.replace(/（.*?）/,"")+" "+gsm+"g "+(roll?"捲筒 "+w+"mm":"平張 "+w+"×1092"),
+      grade:grade,gsm:gsm,form:roll?"捲筒":"平張",spec:roll?("寬 "+w+"mm / 芯 3吋"):(w+" × 1092 mm"),
+      mill:pick(MILLS),uom:roll?"捲":"令",kg:kg,safety:Math.floor(5+rand()*40),
+      price:Math.round((kg*38)/10)*10,uoms:roll?[["捲",1],["公斤",kg]]:[["令",1],["張",500],["公斤",kg]],roll:roll};
+    DB.items.push(it);genItems.push(it);
+  }
+  /* 期初庫存與歷史異動：全部走 Ledger，維持庫存唯一真相 */
+  var whs=DB.warehouses.map(function(w){return w.code;});
+  genItems.forEach(function(it){
+    DB.seq.lg++;
+    DB.ledger.push({id:"L"+DB.seq.lg,date:d(-60),item:it.code,wh:pick(whs),
+      qty:Math.floor(20+rand()*200),event:"期初庫存",ref:"",note:"示範資料期初結轉",roll:""});
+  });
+  var evs=[["採購入庫",1],["銷售出庫",-1],["倉別調撥",1],["盤點調整",1]];
+  for(i=0;i<nLg;i++){
+    var it2=pick(genItems),ev=pick(evs),qy=Math.floor(1+rand()*30)*ev[1];
+    DB.seq.lg++;
+    DB.ledger.push({id:"L"+DB.seq.lg,date:d(-Math.floor(rand()*60)),item:it2.code,wh:pick(whs),
+      qty:qy,event:ev[0],ref:(ev[0]==="採購入庫"?"PO":ev[0]==="銷售出庫"?"DN":"SC")+"-2607-"+p3(Math.floor(rand()*900)+1),
+      note:"示範歷史異動",roll:""});
+  }
+  var stats=["已確認","已配置","部分出貨","已出貨","已結案"];
+  for(i=0;i<nSO;i++){
+    var nl=1+Math.floor(rand()*3),lines=[];
+    for(var j=0;j<nl;j++){
+      var li=pick(genItems);
+      lines.push({id:j+1,item:li.code,qty:Math.floor(5+rand()*80),price:li.price,list:li.price,custom:false,
+        fulfill:{stock:0,conversion:0,purchase:0},conv:"",po:"",shipped:0});
+    }
+    DB.sos.push({no:"SO-2607-"+p3(i+1),cust:pick(DB.customers).code,date:d(-Math.floor(rand()*60)),
+      due:d(Math.floor(rand()*30)-10),status:pick(stats),qt:"",lines:lines});
+  }
+  for(i=0;i<nPO;i++){
+    var pi=pick(genItems);
+    DB.pos.push({no:"PO-2607-"+p3(i+1),sup:pick(DB.suppliers).code,date:d(-Math.floor(rand()*60)),
+      eta:d(Math.floor(rand()*30)-10),status:pick(["已確認","部分入庫","已入庫"]),so:"",
+      lines:[{id:1,item:pi.code,qty:Math.floor(5+rand()*60),recv:0,cost:Math.round(pi.price*0.86)}]});
+  }
+  DB.rev++;
+  return DB;
+}
+function buildDB(){
+  var db=seed();
+  if(LARGE_DATASET_MODE)generateDemoData(db);
+  return db;
+}
+
+/* ====================== 狀態 ====================== */
+var DB=buildDB();
+function initState(){
+  return {view:"dash",salesTab:"qt",qt:null,so:null,po:null,cv:null,dn:null,invTab:"stock",purchaseTab:"po",
+    flash:[],draft:{cust:"C-101",due:d(4),lines:[]},tbl:{},focusSel:null,expand:{},modal:null,
+    editingQt:null,qtDetailTab:"lines",planEdit:null,poDraft:null,
+    masterTab:"item",mIt:null,mCu:null,mSu:null,mWh:null,mDraft:null,mDraftType:null,
+    count:{"SH-CP250-636|WH-BL":"7"},reason:"盤盈盤虧"};
+}
+var S=initState();
+var NAV=[
+  ["dash","總覽","01"],["sales","銷售管理","02"],["purchase","採購管理","03"],
+  ["inventory","庫存管理","04"],["conversion","裁切管理","05"],["delivery","出貨管理","06"],["master","基礎資料","07"]
+];
+
+/* ====================== 業務動作 ====================== */
+/* Sales UOM 與 Base（庫存）UOM 分離保留：客戶下單用的原始單位（如「張」）
+   不能在轉單後只剩換算後的庫存單位（如「令」）——兩者都要留在單據上。 */
+function addDraftLine(itemCode,qtyIn,uom,reqDate){
+  var qty=toStock(itemCode,qtyIn,uom);
+  if(!(qty>0))return false;
+  var pr=priceFor(S.draft.cust,itemCode),it=item(itemCode);
+  S.draft.lines.push({item:itemCode,qty:qty,
+    salesQty:qtyIn,salesUom:uom,baseQty:qty,baseUom:it.uom,
+    requestedDate:reqDate||S.draft.due,
+    price:pr.price,list:pr.list,custom:pr.custom});
+  return true;
+}
+function createQuote(){
+  if(!S.draft.lines.length)return;
+  var qt={no:nextNo("qt"),cust:S.draft.cust,date:d(0),valid:d(14),due:S.draft.due,status:"已送出",so:"",note:"",
+    lines:S.draft.lines.map(function(l){return {item:l.item,qty:l.qty,
+      salesQty:l.salesQty,salesUom:l.salesUom,baseQty:l.baseQty,baseUom:l.baseUom,
+      requestedDate:l.requestedDate,
+      price:l.price,list:l.list,custom:l.custom};})};
+  DB.quotes.push(qt);DB.rev++;
+  S.qt=qt.no;S.draft={cust:S.draft.cust,due:d(4),lines:[]};
+  toast("報價單 "+qt.no+" 已建立（"+custName(qt.cust)+"，"+qt.lines.length+" 個品項，有效期至 "+qt.valid+"）。報價不影響庫存。");
+}
+function convertQuote(no){
+  var qt=findQT(no); if(!qt||qt.so)return;
+  var so={no:nextNo("so"),cust:qt.cust,date:d(0),due:qt.due,status:"已確認",qt:qt.no,
+    lines:qt.lines.map(function(l,i){return {id:i+1,item:l.item,qty:l.qty,
+      salesQty:l.salesQty,salesUom:l.salesUom,baseQty:l.baseQty,baseUom:l.baseUom,
+      requestedDate:l.requestedDate||qt.due,confirmedQty:null,confirmedDate:null,
+      price:l.price,list:l.list,custom:l.custom,fulfill:null,conv:"",po:"",shipped:0};})};
+  DB.sos.push(so);DB.rev++;
+  qt.status="已轉訂單";qt.so=so.no;
+  S.so=so.no;
+  toast("報價單 "+qt.no+" 已轉為銷售單 "+so.no+"（Sales Qty／UOM 與要求交期均沿用報價）· 尚未配置供應來源。要開始處理可按下方「查看銷售單」。");
+}
+/* ---------- 供應配置（Fulfillment Allocation） ----------
+   一筆需求可以同時由 現貨 + 裁切 + 採購 三種來源湊出來，不是三選一。
+   本函式只計算、不寫任何資料。裁切前置 2 天、良率與剩料、供應商交期皆為 Demo 假設。 */
+function convCapacity(itemCode,extraUsed){
+  var it=item(itemCode);
+  if(!it.parent)return {perRoll:0,cap:0,parent:null};
+  var par=item(it.parent);
+  var perRoll=Math.floor(par.kg*0.98/it.kg);
+  /* 母捲可用量以履約倉（WH-BL）計算，不跨倉自動借用 */
+  var rollsFree=Math.max(0,available(it.parent,FULFILL_WH)-(extraUsed||0));
+  return {perRoll:perRoll,cap:rollsFree*perRoll,parent:par};
+}
+/* 銷售可承諾量一律以履約倉（八里主倉）計算：不使用公司全倉 Available，
+   避免「看得到、承諾得了，但實際保留不出來」。其他倉庫庫存僅供參考顯示。 */
+function planSupply(itemCode,qty,parentUsed){
+  var it=item(itemCode),av=available(itemCode,FULFILL_WH);
+  var stock=Math.min(qty,Math.max(0,av));
+  var gap=rnd3(qty-stock);
+  var cc=convCapacity(itemCode,parentUsed);
+  var conversion=gap>0?Math.min(gap,cc.cap):0;
+  var purchase=rnd3(gap-conversion);
+  var sup=supForItem(itemCode);
+  var lead=(sup?sup.days:7)+1;
+  var days=purchase>0?lead:(conversion>0?2:0);
+  var why=[];
+  if(stock>0)why.push("現貨可保留 "+q(stock)+" "+it.uom);
+  if(conversion>0)why.push("以母捲裁切補 "+q(conversion)+" "+it.uom+"（含排機約 2 天）");
+  if(purchase>0)why.push("向 "+it.mill+" 採購 "+q(purchase)+" "+it.uom+"（交期 "+(sup?sup.days:7)+" 天）");
+  var otherWh=rnd3(onHand(itemCode)-onHand(itemCode,FULFILL_WH));
+  return {avail:av,qty:qty,stock:stock,conversion:conversion,purchase:purchase,
+    rollsNeeded:conversion>0?Math.ceil(conversion*it.kg/(cc.parent.kg*0.96)):0,
+    days:days,date:d(days),why:why.join("；")||"可用量足夠，備妥即可出貨",
+    otherWh:otherWh,
+    path:(purchase>0?"採購":(conversion>0?"裁切":"現貨"))};
+}
+/* 第一階段：只產生建議，不建立任何單據、不動庫存 */
+function recommendSO(no){
+  var so=findSO(no); if(!so||so.status!=="已確認")return;
+  var parentUsed={};
+  so.plan=so.lines.map(function(l){
+    var it=item(l.item),pk=it.parent||"";
+    var p=planSupply(l.item,l.qty,pk?(parentUsed[pk]||0):0);
+    if(pk&&p.rollsNeeded)parentUsed[pk]=(parentUsed[pk]||0)+p.rollsNeeded;
+    p.lineId=l.id;p.item=l.item;return p;
+  });
+  so.planAt=d(0);
+  toast("已產生供應建議（僅為分析結果，尚未建立任何單據，也未動用庫存）。確認後才會保留庫存並開立工單／採購單。");
+}
+/* 第二階段：人工確認後才寫入 —— 保留、裁切工單、採購單 */
+function confirmSO(no){
+  var so=findSO(no); if(!so||!so.plan||so.status!=="已確認")return;
+  var made=[];
+  so.plan.forEach(function(p){
+    var l=so.lines.filter(function(x){return x.id===p.lineId;})[0];
+    l.fulfill={stock:p.stock,conversion:p.conversion,purchase:p.purchase};
+    l.confirmedQty=rnd3(p.stock+p.conversion+p.purchase);
+    l.confirmedDate=p.date;
+    if(p.stock>0)reserve(so.no,l.id,l.item,FULFILL_WH,p.stock);
+    if(p.conversion>0){
+      var pit=item(l.item),par=item(pit.parent);
+      var rolls=Math.max(1,Math.ceil(p.conversion*pit.kg/(par.kg*0.96)));
+      var totKg=rolls*par.kg, remainKg=60;
+      var outQty=Math.floor((totKg-remainKg)*0.98/pit.kg);
+      var outKg=Math.round(outQty*pit.kg*10)/10;
+      var scrapKg=Math.round((totKg-outKg-remainKg)*10)/10;
+      var cv={no:nextNo("cv"),date:d(0),status:"已釋放",wh:"WH-CV",inItem:par.code,inQty:rolls,inKg:totKg,
+        rolls:DB.rolls.filter(function(x){return x.item===par.code&&x.status==="在庫";}).slice(0,rolls).map(function(x){return x.no;}),
+        outItem:l.item,outQty:outQty,outKg:outKg,remainKg:remainKg,remainRoll:"",scrapKg:scrapKg,
+        yield:Math.round(outKg/totKg*1000)/10,so:so.no,soLine:l.id,need:p.conversion};
+      DB.convs.push(cv);DB.rev++; l.conv=cv.no;
+      made.push("裁切工單 "+cv.no+"（投入 "+rolls+" 捲母捲）");
+    }
+    if(p.purchase>0){
+      var it2=item(l.item);
+      var sup=supForItem(l.item)||DB.suppliers[0];
+      var po={no:nextNo("po"),sup:sup.code,date:d(0),eta:d(sup.days),status:"已確認",so:so.no,soLine:l.id,
+        lines:[{id:1,item:l.item,qty:p.purchase,recv:0,cost:Math.round(it2.price*0.86)}]};
+      DB.pos.push(po);DB.rev++; l.po=po.no;
+      made.push("採購單 "+po.no+"（"+q(p.purchase)+" "+it2.uom+"，"+sup.name+"）");
+    }
+  });
+  so.status="已配置";DB.rev++;
+  toast("供應方案已確認．已建立庫存保留"+(made.length?"、"+made.join("、"):"")+"。庫存要等裁切領料、採購入庫與出貨過帳才會異動。");
+}
+function cancelPlan(no){var so=findSO(no);if(so){so.plan=null;so.planAt=null;}}
+function runConversion(no){
+  var cv=findCV(no); if(!cv||cv.status==="已完成")return;
+  var par=item(cv.inItem);
+  post(d(0),cv.inItem,"WH-BL",-cv.inQty,"倉別調撥",cv.no,"調往八里加工區");
+  post(d(0),cv.inItem,"WH-CV",cv.inQty,"倉別調撥",cv.no,"自八里主倉調入");
+  post(d(0),cv.inItem,"WH-CV",-cv.inQty,"裁切領料",cv.no,"母捲 "+cv.rolls.join("、"),cv.rolls.join(","));
+  post(d(0),cv.outItem,"WH-BL",cv.outQty,"裁切產出",cv.no,"裁切完成品入庫");
+  var rr="R-2609-0141";
+  post(d(0),cv.inItem,"WH-CV",Math.round(cv.remainKg/par.kg*1000)/1000,"剩料回庫",cv.no,"殘捲 "+rr+"（"+n0(cv.remainKg)+" 公斤）",rr);
+  cv.rolls.forEach(function(rn){
+    DB.rolls.forEach(function(r){if(r.no===rn){r.status="已裁切";r.kg=0;r.conv=cv.no;}});
+  });
+  DB.rolls.push({no:rr,item:cv.inItem,wh:"WH-CV",kg0:cv.remainKg,kg:cv.remainKg,status:"在庫",src:"裁切剩料",parent:cv.rolls[cv.rolls.length-1],conv:cv.no});
+  cv.remainRoll=rr; cv.status="已完成";
+  if(cv.so){
+    var so=findSO(cv.so), l=so.lines.filter(function(x){return x.id===cv.soLine;})[0];
+    var already=DB.reservations.filter(function(r){return r.so===so.no&&r.line===l.id&&r.status==="open";})
+      .reduce(function(a,b){return a+b.qty;},0);
+    var more=Math.min(cv.outQty,l.qty-already,onHand(l.item)-reserved(l.item));
+    if(more>0)reserve(so.no,l.id,l.item,"WH-BL",more);
+  }
+  DB.rev++;
+  toast("裁切工單 "+cv.no+" 已完成｜產出 "+cv.outQty+" 令、剩料 "+n0(cv.remainKg)+" 公斤、損耗 "+n1(cv.scrapKg)+" 公斤，良率 "+n1(cv.yield)+"%．已寫入 5 筆庫存異動",true);
+}
+function receivePO(no){
+  var po=findPO(no); if(!po||po.status==="已入庫")return;
+  var cnt=0;
+  po.lines.forEach(function(l){
+    var left=l.qty-l.recv; if(left<=0)return;
+    post(d(0),l.item,"WH-BL",left,"採購入庫",po.no,supName(po.sup)+" 交貨驗收");
+    l.recv=l.qty; cnt++;
+    var it=item(l.item);
+    if(it.roll){
+      for(var i=0;i<left;i++){
+        DB.rolls.push({no:"R-2609-0"+(160+DB.rolls.length),item:l.item,wh:"WH-BL",kg0:it.kg,kg:it.kg,status:"在庫",src:"進貨 "+po.no});
+      }
+    }
+  });
+  po.status="已入庫";
+  if(po.so){
+    var so=findSO(po.so), l2=so.lines.filter(function(x){return x.id===po.soLine;})[0];
+    var already=DB.reservations.filter(function(r){return r.so===so.no&&r.line===l2.id&&r.status==="open";})
+      .reduce(function(a,b){return a+b.qty;},0);
+    var more=Math.min(l2.qty-already,onHand(l2.item)-reserved(l2.item));
+    if(more>0)reserve(so.no,l2.id,l2.item,"WH-BL",more);
+  }
+  DB.rev++;
+  toast("採購單 "+po.no+" 已驗收入庫．已寫入 "+cnt+" 筆庫存異動",true);
+}
+/* 盤點與庫存調整 */
+function postCount(){
+  var sc={no:nextNo("sc"),date:d(0),reason:S.reason,lines:[]},cnt=0;
+  Object.keys(S.count).forEach(function(k){
+    var parts=k.split("|"),it=parts[0],wh=parts[1];
+    var book=onHand(it,wh),actual=parseFloat(S.count[k]);
+    if(isNaN(actual))return;
+    var diff=Math.round((actual-book)*1000)/1000;
+    if(Math.abs(diff)<1e-9)return;
+    post(d(0),it,wh,diff,"盤點調整",sc.no,S.reason+"：帳上 "+q(book)+" → 實盤 "+q(actual));
+    sc.lines.push({item:it,wh:wh,book:book,actual:actual,diff:diff});cnt++;
+  });
+  if(!cnt){toast("實盤數量與帳上一致，沒有需要調整的品項。");return;}
+  DB.counts.push(sc);DB.rev++;S.count={};
+  toast("盤點單 "+sc.no+" 已過帳（"+S.reason+"）．已寫入 "+cnt+" 筆庫存異動",true);
+}
+var DNFLOW=["待揀貨","揀貨中","已揀貨","已包裝","已出車","已送達"];
+function createDN(soNo){
+  var so=findSO(soNo);
+  var exist=DB.dns.filter(function(x){return x.so===soNo;})[0];
+  if(exist)return exist;
+  /* soLineId 保留來源明細，避免同一 Item 在同張 SO 出現兩行時互相錯配 */
+  var dn={no:nextNo("dn"),date:d(0),so:soNo,cust:so.cust,status:"待揀貨",
+    lines:so.lines.map(function(l){return {item:l.item,soLineId:l.id,qty:l.qty};}),posted:false};
+  DB.dns.push(dn);DB.rev++;
+  return dn;
+}
+function advanceDN(no){
+  var dn=findDN(no), i=DNFLOW.indexOf(dn.status);
+  if(i<0||i>=DNFLOW.length-1)return;
+  dn.status=DNFLOW[i+1];DB.rev++;
+  if(dn.status==="已出車")postDN(dn); else toast("出貨單 "+dn.no+" 狀態更新為「"+dn.status+"」");
+}
+/* Demo 假設：貨物進入「已出車」時執行銷售出庫。正式庫存過帳時點待需求訪談確認。
+   出庫只做庫存與訂單狀態，不自動開發票 —— 發票改由人工建立。 */
+function postDN(dn){
+  var so=findSO(dn.so),cnt=0;
+  dn.lines.forEach(function(l){
+    post(d(0),l.item,"WH-BL",-l.qty,"銷售出庫",dn.no,custName(dn.cust)+"　"+so.no);cnt++;
+    /* 用 soLineId 對回明細，不靠 item code——同一 Item 在同張 SO 出現兩行也不會錯配 */
+    var sl=so.lines.filter(function(x){return x.id===l.soLineId;})[0]; if(sl)sl.shipped=l.qty;
+  });
+  DB.reservations.forEach(function(r){if(r.so===so.no&&r.status==="open")r.status="consumed";});
+  so.status="已出貨";dn.posted=true;DB.rev++;
+  toast("出貨單 "+dn.no+" 已出車過帳｜訂單轉為「已出貨」，庫存保留已釋放．已寫入 "+cnt+" 筆庫存異動。發票尚未開立。",true);
+}
+function invoiceOf(soNo){return DB.invoices.filter(function(x){return x.so===soNo;})[0];}
+/* 人工建立銷貨發票（開立時點為 Demo 假設，待客戶確認） */
+function createInvoice(soNo){
+  var so=findSO(soNo); if(!so||invoiceOf(soNo))return;
+  var dn=DB.dns.filter(function(x){return x.so===soNo;})[0];
+  var lines=so.lines.filter(function(l){return l.shipped>0;})
+    .map(function(l){return {item:l.item,qty:l.shipped,price:l.price,amt:l.shipped*l.price};});
+  if(!lines.length){toast("此訂單尚未出庫，沒有可開立發票的數量。");return;}
+  var sub=lines.reduce(function(a,b){return a+b.amt;},0),tax=Math.round(sub*0.05);
+  var iv={no:nextNo("iv"),date:d(0),so:so.no,dn:dn?dn.no:"",cust:so.cust,lines:lines,sub:sub,tax:tax,total:sub+tax};
+  DB.invoices.push(iv);DB.rev++;
+  toast("銷貨發票 "+iv.no+" 已建立｜未稅 "+money(sub)+"　稅額 "+money(tax)+"　總計 "+money(iv.total)+"。發票不影響庫存。");
+}
+
+/* ====================== 畫面 ====================== */
+function badge(status){
+  var m={"草稿":"n","已送出":"i","已失效":"n","已確認":"i","已配置":"a","部分出貨":"w","已出貨":"g","已結案":"n",
+    "部分入庫":"w","已入庫":"g","已規劃":"n","已釋放":"i","進行中":"w","已完成":"g",
+    "待揀貨":"n","揀貨中":"i","已揀貨":"i","已包裝":"a","已出車":"w","已送達":"g",
+    "在庫":"g","已裁切":"n","逾期":"c",
+    "待配置":"n","部分備齊":"w","已備齊":"a",
+    "可按期交付":"g","部分延後":"w","延後可交":"w","待確認":"n",
+    "需採購":"c","已足夠":"g"};
+  return '<span class="bdg '+(m[status]||"n")+'">'+status+'</span>';
+}
+function srcBadge(s){
+  if(!s)return '<span class="dim">—</span>';
+  var m={"現貨":"g","裁切":"k","採購":"i"};
+  return '<span class="bdg sq '+m[s]+'">'+s+'</span>';
+}
+/* 供應配置：三種來源可並存，數量為 0 者不顯示 */
+function allocBadges(f,uom){
+  if(!f)return '<span class="dim">—</span>';
+  var out=[];
+  if(f.stock>0)out.push('<span class="bdg sq g">現貨 '+q(f.stock)+'</span>');
+  if(f.conversion>0)out.push('<span class="bdg sq k">裁切 '+q(f.conversion)+'</span>');
+  if(f.purchase>0)out.push('<span class="bdg sq i">採購 '+q(f.purchase)+'</span>');
+  return out.length?'<span class="alloc">'+out.join("")+'</span>':'<span class="dim">—</span>';
+}
+/* 供應建議的手動調整：現貨／裁切／採購各給一個可編輯數量欄，系統建議只是預設值，不是唯一解。
+   現貨欄位會限制在目前可用量以內；裁切／採購沒有系統自動上限，交期與產能是否吃得下由人判斷。 */
+function allocEditRow(soNo,lineId,p){
+  var it=item(p.item),avStock=Math.max(0,available(p.item,FULFILL_WH));
+  function fld(k,lb,cls,max){
+    return '<span class="planqty '+cls+'"><label>'+lb+'</label>'+
+      '<input type="number" step="0.001" min="0"'+(max!==undefined?' max="'+max+'"':'')+
+      ' data-planqty="'+soNo+'|'+lineId+'|'+k+'" value="'+(p[k]||0)+'"></span>';
+  }
+  return '<div class="planedit">'+fld("stock","現貨","g",avStock)+fld("conversion","裁切","k")+fld("purchase","採購","i")+'</div>';
+}
+/* 手動調整供應建議的其中一格數量（現貨／裁切／採購）：只改資料、不碰畫面，供 UI 事件與測試共用。
+   現貨不能超過目前可用量；裁切／採購沒有系統自動上限，交期／產能是否吃得下由人判斷。
+   回傳 true 表示確實找到該行並更新，false 表示查無此行（單號或行號不存在）。 */
+function applyPlanEdit(soNo,lineId,field,rawValue){
+  var soP=findSO(soNo),prow=soP&&soP.plan?soP.plan.filter(function(x){return x.lineId===lineId;})[0]:null;
+  if(!prow)return false;
+  var val=Math.max(0,parseFloat(rawValue)||0);
+  if(field==="stock")val=Math.min(val,Math.max(0,available(prow.item,FULFILL_WH)));
+  prow[field]=rnd3(val);
+  var it3=item(prow.item),sup3=supForItem(prow.item);
+  prow.days=prow.purchase>0?(sup3?sup3.days:7)+1:(prow.conversion>0?2:0);
+  prow.date=d(prow.days);
+  var why3=[];
+  if(prow.stock>0)why3.push("現貨可保留 "+q(prow.stock)+" "+it3.uom);
+  if(prow.conversion>0)why3.push("以母捲裁切補 "+q(prow.conversion)+" "+it3.uom+"（含排機約 2 天）");
+  if(prow.purchase>0)why3.push("向 "+it3.mill+" 採購 "+q(prow.purchase)+" "+it3.uom+"（交期 "+(sup3?sup3.days:7)+" 天）");
+  prow.why=why3.join("；")||"可用量足夠，備妥即可出貨";
+  prow.manual=true;
+  return true;
+}
+/* 銷售履約倉：Demo V0 固定以八里主倉計算可承諾／保留／出貨，不跨倉自動配置。 */
+var FULFILL_WH="WH-BL",FULFILL_WH_NAME="八里主倉";
+/* 承諾狀態：比對「可承諾配置」與「要求交期」，Requested 與 Confirmed 分離判定。
+   可按期交付／部分延後／延後可交／待確認，四選一，不假造日期。 */
+function promiseStatus(f,reqDate,confDate){
+  var totalQty=f?rnd3(f.stock+f.conversion+f.purchase):0;
+  if(totalQty<=0||!confDate)return{label:"待確認",cls:"n"};
+  var onTime=confDate<=reqDate;
+  if(f.stock>0&&(f.conversion+f.purchase)>0&&!onTime)return{label:"部分延後",cls:"w"};
+  return onTime?{label:"可按期交付",cls:"g"}:{label:"延後可交",cls:"w"};
+}
+/* 履約狀態（Fulfillment Status）：從保留／出貨數量推導，純顯示用途，
+   不改寫、也不取代 so.status（Order 生命週期欄位，Dashboard／其他模組仍依賴它）。 */
+function fulfillmentStatusOf(so){
+  if(so.status==="已出貨")return{label:"已出貨",cls:"g"};
+  if(so.lines.some(function(l){return l.shipped>0;}))return{label:"部分出貨",cls:"w"};
+  if(!so.lines.some(function(l){return l.fulfill;}))return{label:"待配置",cls:"n"};
+  var allReady=so.lines.every(function(l){
+    var rs=DB.reservations.filter(function(r){return r.so===so.no&&r.line===l.id&&r.status==="open";}).reduce(function(a,b){return a+b.qty;},0);
+    return rs>=l.qty;
+  });
+  return allReady?{label:"已備齊",cls:"a"}:{label:"部分備齊",cls:"w"};
+}
+/* Order Status：訂單本身的核准生命週期，與履約進度分離顯示（不覆寫 so.status 儲存值）。 */
+function orderStatusOf(so){return so.status==="已結案"?{label:"已結案",cls:"n"}:{label:"已確認",cls:"i"};}
+/* 示範假設標記：此規則尚未經客戶確認 */
+var HYPNOTE="此規則為目前 Demo 假設，實際作業邏輯待客戶需求訪談確認。";
+function hyp(note){return '<span class="hyp" title="'+esc(note||HYPNOTE)+'">示範假設</span>';}
+function hypNote(txt){return '<div class="hnote">'+txt+'　'+hyp()+'</div>';}
+function itemCell(c){
+  var it=item(c);
+  if(!it)return '<span class="mono dim">'+esc(c)+'</span>';
+  return '<div>'+esc(it.name)+'</div><small class="mono">'+it.code+'</small>';
+}
+
+/* ================= 通用資料表：搜尋 → 篩選 → 排序 → 分頁 → 只渲染當頁 =================
+   Prototype Architecture Only：
+     Browser → JavaScript Array → Filter / Sort / Pagination → DOM
+   正式 Production Architecture 應為：
+     Browser → API → Application Service → Database
+   並採 server-side pagination / filtering / sorting（SELECT ... WHERE ... ORDER BY ... LIMIT ...
+   或 cursor pagination）。正式系統禁止 download all records 後在瀏覽器過濾。 */
+var PAGE_SIZES=[25,50,100],DEFAULT_PAGE_SIZE=50;
+function tbl(key){
+  if(!S.tbl[key])S.tbl[key]={q:"",f:{},sort:null,dir:"asc",page:1,size:DEFAULT_PAGE_SIZE};
+  return S.tbl[key];
+}
+function dataTable(cfg){
+  var st=tbl(cfg.key),rows=cfg.rows||[];
+  /* 1. 搜尋 */
+  var qs=st.q.trim().toLowerCase();
+  if(qs&&cfg.search)rows=rows.filter(function(r){return String(cfg.search(r)||"").toLowerCase().indexOf(qs)>=0;});
+  /* 2. 篩選 */
+  (cfg.filters||[]).forEach(function(f){
+    var v=st.f[f.k];
+    if(v)rows=rows.filter(function(r){return f.match(r,v);});
+  });
+  /* 3. 排序 */
+  var total=rows.length,col=null;
+  if(st.sort){
+    cfg.cols.forEach(function(c){if(c.k===st.sort&&c.sort)col=c;});
+    if(col){
+      rows=rows.slice().sort(function(a,b){
+        var x=col.sort(a),y=col.sort(b);
+        if(x===y)return 0;
+        return (x>y?1:-1)*(st.dir==="desc"?-1:1);
+      });
+    }
+  }else if(cfg.defaultSort)rows=cfg.defaultSort(rows.slice());
+  /* 4. 分頁：只保留當頁資料 */
+  var pages=Math.max(1,Math.ceil(total/st.size));
+  if(st.page>pages)st.page=pages;
+  var from=(st.page-1)*st.size,to=Math.min(total,from+st.size);
+  var pageRows=rows.slice(from,to);
+
+  /* 工具列 */
+  var bar='',ctrls=[];
+  if(cfg.search)ctrls.push('<input type="search" data-tq="'+cfg.key+'" value="'+esc(st.q)+'" placeholder="'+esc(cfg.placeholder||"搜尋")+'" aria-label="搜尋">');
+  (cfg.filters||[]).forEach(function(f){
+    ctrls.push('<label class="lbl">'+f.label+'</label><select data-tf="'+cfg.key+'|'+f.k+'">'+
+      '<option value="">全部</option>'+
+      f.options.map(function(o){
+        var val=typeof o==="string"?o:o[0],lab=typeof o==="string"?o:o[1];
+        return '<option value="'+esc(val)+'"'+(st.f[f.k]===val?' selected':'')+'>'+esc(lab)+'</option>';
+      }).join("")+'</select>');
+  });
+  if(ctrls.length)bar='<div class="tbar">'+ctrls.join("")+'<span class="cnt">共 '+n0(total)+' 筆</span></div>';
+
+  /* 表頭 */
+  var head=cfg.cols.map(function(c){
+    var cls=(c.r?"r ":"")+(c.sort?"s":"");
+    var ar=st.sort===c.k?'<span class="ar">'+(st.dir==="asc"?"▲":"▼")+'</span>':'';
+    return '<th class="'+cls+'"'+(c.sort?' data-ts="'+cfg.key+'|'+c.k+'"':'')+'>'+c.label+ar+'</th>';
+  }).join("");
+
+  /* 內容：只有當頁 rows 進入 DOM */
+  var body=pageRows.map(function(r){
+    var meta=cfg.onRow?cfg.onRow(r):null;
+    var attrs=meta?' class="click'+(meta.flash?" flash":"")+'" data-act="'+meta.act+'" data-no="'+meta.no+'" aria-selected="'+(!!meta.selected)+'"':(cfg.rowClass?' class="'+cfg.rowClass(r)+'"':'');
+    return '<tr'+attrs+'>'+cfg.cols.map(function(c){
+      return '<td'+(c.r?' class="r"':'')+'>'+c.cell(r)+'</td>';
+    }).join("")+'</tr>';
+  }).join("");
+  if(!pageRows.length)body='<tr><td colspan="'+cfg.cols.length+'" class="dim" style="padding:18px 12px">'+(cfg.empty||"沒有符合條件的資料")+'</td></tr>';
+
+  /* 分頁 footer */
+  var foot='';
+  if(total>0){
+    var nums=pageWindow(st.page,pages).map(function(p){
+      if(p==="…")return '<span class="pgs">…</span>';
+      return '<button class="pgb" data-tp="'+cfg.key+'|'+p+'" aria-current="'+(p===st.page)+'">'+p+'</button>';
+    }).join("");
+    foot='<div class="tfoot"><span>共 <b class="num">'+n0(total)+'</b> 筆 · 顯示 '+n0(from+1)+'–'+n0(to)+'</span>'+
+      '<span class="pg">'+
+        '<button class="pgb" data-tp="'+cfg.key+'|'+(st.page-1)+'"'+(st.page<=1?' disabled':'')+'>上一頁</button>'+nums+
+        '<button class="pgb" data-tp="'+cfg.key+'|'+(st.page+1)+'"'+(st.page>=pages?' disabled':'')+'>下一頁</button>'+
+        '<span class="lbl" style="margin-left:8px">每頁</span><select data-tz="'+cfg.key+'">'+
+          PAGE_SIZES.map(function(s){return '<option value="'+s+'"'+(st.size===s?' selected':'')+'>'+s+'</option>';}).join("")+
+        '</select>'+
+      '</span></div>';
+  }
+  return bar+'<div class="tw"><table class="tbl"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div>'+foot;
+}
+/* 頁碼視窗化：1 … 4 5 6 … 250 */
+function pageWindow(cur,pages){
+  var out=[],i;
+  if(pages<=7){for(i=1;i<=pages;i++)out.push(i);return out;}
+  out.push(1);
+  var s=Math.max(2,cur-1),e=Math.min(pages-1,cur+1);
+  if(s>2)out.push("…");
+  for(i=s;i<=e;i++)out.push(i);
+  if(e<pages-1)out.push("…");
+  out.push(pages);
+  return out;
+}
+function qtyGroup(it,wh,extra){
+  var oh=onHand(it,wh),rs=reserved(it,wh),av=available(it,wh),ic=incoming(it),u=item(it).uom;
+  return '<div class="qtys">'+
+    '<div class="qty"><div class="l">現有量</div><div class="v">'+q(oh)+'<small class="dim"> '+u+'</small></div></div>'+
+    '<div class="qty res"><div class="l">已保留</div><div class="v">'+q(rs)+'</div></div>'+
+    '<div class="qty hi"><div class="l">可用量</div><div class="v">'+q(av)+'</div></div>'+
+    '<div class="qty inc"><div class="l">在途</div><div class="v">'+q(ic)+'</div></div>'+
+    (extra||'')+'</div>';
+}
+/* 客戶需求第一層顯示 Sales Qty／UOM（客戶原始下單單位），庫存換算（Base Qty／UOM）只在單位不同時當附註。 */
+function salesQtyView(l){
+  var it=item(l.item);
+  var sq=(l.salesQty!==undefined&&l.salesQty!==null)?l.salesQty:l.qty;
+  var su=l.salesUom||it.uom;
+  var bq=(l.baseQty!==undefined&&l.baseQty!==null)?l.baseQty:l.qty;
+  var bu=l.baseUom||it.uom;
+  return {sq:sq,su:su,bq:bq,bu:bu,
+    html:q(sq)+' '+su+(su!==bu?'<br><small class="dim">庫存換算：'+q(bq)+' '+bu+'</small>':'')};
+}
+/* 供應明細（Inline Expand）：履約倉範圍的庫存、供應配置，以及實際在途採購單／建議採購。
+   confirmed=true 代表 f 是已確認的供應配置（有真實單據）；false 代表尚未確認、只是即時試算的建議。 */
+function supplyDetailHTML(itemCode,f,confDate,otherWh,confirmed){
+  var it=item(itemCode);
+  var openPOs=DB.pos.filter(function(po){
+    return po.status!=="已入庫"&&po.lines.some(function(l){return l.item===itemCode;});
+  });
+  var poSection='';
+  if(openPOs.length){
+    var poRows=openPOs.map(function(po){
+      var pl=po.lines.filter(function(l){return l.item===itemCode;})[0];
+      return '<tr><td><button class="doc" data-act="go" data-view="purchase" data-no="'+po.no+'">'+po.no+'</button></td>'+
+        '<td>'+supName(po.sup)+'</td><td class="num">'+md(po.eta)+'</td>'+
+        '<td class="r num">'+q(pl.qty-pl.recv)+' '+it.uom+'</td><td>'+badge(po.status)+'</td></tr>';
+    }).join("");
+    poSection='<div style="margin-top:12px"><div style="font-size:11px;color:var(--ink-3);margin-bottom:4px">在途採購</div>'+
+      '<div class="tw"><table class="tbl" style="border:1px solid var(--line);border-radius:4px">'+
+      '<thead><tr><th>採購單</th><th>供應商</th><th>預計到貨</th><th class="r">未入庫量</th><th>狀態</th></tr></thead><tbody>'+poRows+'</tbody></table></div></div>';
+  }
+  var planNote=(f&&f.purchase>0&&!confirmed)
+    ?'<div style="margin-top:8px;font-size:12.5px" class="dim">建議採購 <b class="num">'+q(f.purchase)+' '+it.uom+'</b>，尚未建立採購單，供應方案確認後才會實際下單。</div>':'';
+  return '<div class="pad" style="background:var(--surface-3);border-top:1px dashed var(--line)">'+
+    '<div class="dl" style="margin-bottom:10px">'+dt("履約倉庫",FULFILL_WH_NAME+' <span class="mono dim">'+FULFILL_WH+'</span>')+'</div>'+
+    qtyGroup(itemCode,FULFILL_WH)+
+    '<div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:12.5px">'+
+      '<span>供應配置：'+allocBadges(f)+'</span>'+
+      (confDate?'<span class="dim">預估補貨日期：<b class="num">'+confDate+'</b></span>':'')+
+    '</div>'+planNote+
+    (otherWh>0?'<div style="margin-top:8px;font-size:12.5px" class="dim">其他倉庫另有庫存：<b class="num">'+q(otherWh)+' '+it.uom+'</b>，不自動跨倉配置</div>':'')+
+    poSection+
+  '</div>';
+}
+
+/* ---- 總覽 ---- */
+/* ---------- Dashboard：Aggregate → Exception → Priority → Drill-down ----------
+   Dashboard 只讀 onHand()/reserved()/available()/incoming()，不建立任何庫存數字，
+   也不 render 逐筆清單；資料量再大，這裡的版面與運算量都不變。 */
+function daysLate(eta){return Math.round((new Date(d(0))-new Date(eta))/864e5);}
+function dashboardMetrics(){
+  var today=d(0);
+  var openSO=DB.sos.filter(function(s){return s.status!=="已出貨"&&s.status!=="已結案";});
+  var dueTodaySO=openSO.filter(function(s){return s.due===today;});
+  var openPO=DB.pos.filter(function(p){return p.status!=="已入庫"&&p.status!=="已取消";});
+  var latePO=openPO.filter(function(p){return p.eta<today;});
+  var wipCV=DB.convs.filter(function(c){return c.status==="已釋放"||c.status==="進行中";});
+  var openDN=DB.dns.filter(function(x){return x.status!=="已送達";});
+
+  /* 庫存健康：互斥三態（正常／低庫存／缺貨）＋ 獨立輔助指標（補貨中） */
+  var okN=0,lowItems=[],outItems=[],incN=0;
+  DB.items.forEach(function(it){
+    var av=available(it.code);
+    if(av<=0)outItems.push(it);else if(av<it.safety)lowItems.push(it);else okN++;
+    if(incoming(it.code)>0)incN++;
+  });
+
+  var shortages=shortageList().filter(function(r){return r.gap>0;});
+
+  return {
+    kpi:{openSO:openSO.length,dueToday:dueTodaySO.length,belowSafety:lowItems.length+outItems.length,
+      openPO:openPO.length,wip:wipCV.length,openDN:openDN.length,shortage:shortages.length},
+    health:{ok:okN,low:lowItems.length,out:outItems.length,inc:incN,total:DB.items.length},
+    latePO:latePO,dueTodaySO:dueTodaySO,lowItems:lowItems,outItems:outItems,shortages:shortages
+  };
+}
+/* Priority Top 3：採購逾期 → 今日應交未出貨 → 缺料未採購（連單都還沒下）→ 缺貨／低庫存（比例越低越優先） */
+function dashboardTop3(m){
+  var cand=[];
+  m.latePO.slice().sort(function(a,b){return daysLate(b.eta)-daysLate(a.eta);}).forEach(function(po){
+    cand.push({icon:'c',t:po.no,d:supName(po.sup)+'　已逾期 '+daysLate(po.eta)+' 天',view:'purchase',no:po.no});
+  });
+  m.dueTodaySO.slice().sort(function(a,b){return a.no<b.no?-1:1;}).forEach(function(so){
+    cand.push({icon:'i',t:so.no,d:custName(so.cust)+'　今日應交',view:'sales',tab:'so',no:so.no});
+  });
+  m.shortages.slice().sort(function(a,b){return b.gap-a.gap;}).forEach(function(r){
+    var it=item(r.item);
+    cand.push({icon:'c',t:it.name,d:'缺口 '+q(r.gap)+' '+it.uom+'　尚未下採購單',view:'purchase',tab:'shortage'});
+  });
+  m.outItems.concat(m.lowItems).map(function(it){
+    var av=available(it.code);
+    return {it:it,av:av,ratio:it.safety>0?av/it.safety:(av<=0?-1:1)};
+  }).sort(function(a,b){return a.ratio-b.ratio;}).forEach(function(x){
+    cand.push({icon:(x.av<=0?'c':'w'),t:x.it.code,d:x.it.name+'　可用量 '+q(x.av)+' / 安全存量 '+x.it.safety,
+      view:'inventory',tab:'stock',tblkey:'inv',q:x.it.code});
+  });
+  return cand.slice(0,3);
+}
+function statRow(label,ct,color,attrs,zero){
+  return '<button class="statrow'+(zero?' z':'')+'" data-act="dashgo"'+attrs+'>'+
+    '<span class="lb">'+label+'</span><span class="ct"'+(color&&!zero?' style="color:'+color+'"':'')+'>'+n0(ct)+'</span></button>';
+}
+function dgAttrs(o){
+  var a='';
+  if(o.view)a+=' data-view="'+o.view+'"';
+  if(o.tab)a+=' data-tab="'+o.tab+'"';
+  if(o.no)a+=' data-no="'+o.no+'"';
+  if(o.tblkey)a+=' data-tblkey="'+o.tblkey+'"';
+  if(o.filters)a+=' data-filters=\''+JSON.stringify(o.filters)+'\'';
+  if(o.q!==undefined)a+=' data-q="'+esc(o.q)+'"';
+  return a;
+}
+function vDash(){
+  var m=dashboardMetrics(),h=m.health,top3=dashboardTop3(m);
+
+  var kpis='<div class="kpis">'+
+    kpi("待履約訂單",m.kpi.openSO,"張","",{view:"sales",tab:"so",tblkey:"so",filters:{status:"open"}})+
+    kpi("今日應交",m.kpi.dueToday,"張",m.kpi.dueToday?"watch":"",{view:"sales",tab:"so",tblkey:"so",filters:{status:"open",due:"today"}})+
+    kpi("低庫存品項",m.kpi.belowSafety,"項",m.kpi.belowSafety?"alert":"",{view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"below"}})+
+    kpi("待到貨採購",m.kpi.openPO,"張",m.latePO.length?"watch":"",{view:"purchase",tblkey:"po",filters:{status:"open"}})+
+    kpi("待加工／加工中",m.kpi.wip,"張","",{view:"conversion",tblkey:"cv",filters:{status:"wip"}})+
+    kpi("未完成配送",m.kpi.openDN,"車","",{view:"delivery",tblkey:"dn",filters:{status:"open"}})+
+  '</div>';
+
+  /* 庫存健康：三態互斥計數 + 補貨中（獨立輔助指標） */
+  var health='<div class="card"><h3>庫存健康<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">共 '+n0(h.total)+' 項</span></h3>'+
+    '<div class="statlist">'+
+      statRow("正常",h.ok,"var(--good)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"ok"}}),!h.ok)+
+      statRow("低庫存",h.low,"var(--warn)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"low"}}),!h.low)+
+      statRow("缺貨",h.out,"var(--crit)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"out"}}),!h.out)+
+      '<div class="statdiv"></div>'+
+      statRow("補貨中",h.inc,"var(--info)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"inc"}}),!h.inc)+
+    '</div>'+
+    '<div class="actbar"><button class="doc" data-act="dashgo"'+dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{}})+'">查看庫存 →</button></div>'+
+    hypNote("安全存量門檻目前為示範設定，正式規則待需求確認。")+
+  '</div>';
+
+  /* 例外事件：Category Summary（互動聚合列）＋ Priority Top 3（最多 3 筆預覽） */
+  var excCats=[
+    {label:"採購逾期",ct:m.latePO.length,go:{view:"purchase",tblkey:"po",filters:{eta:"late"}}},
+    {label:"今日應交未出貨",ct:m.dueTodaySO.length,go:{view:"sales",tab:"so",tblkey:"so",filters:{status:"open",due:"today"}}},
+    {label:"缺料未採購",ct:m.shortages.length,go:{view:"purchase",tab:"shortage"}},
+    {label:"缺貨品項",ct:h.out,go:{view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"out"}}},
+    {label:"低庫存品項",ct:h.low,go:{view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"low"}}}
+  ];
+  var totalExc=excCats.reduce(function(a,c){return a+c.ct;},0);
+  var topCat=excCats.slice().sort(function(a,b){return b.ct-a.ct;})[0];
+  var exception='<div class="card"><h3>例外事件<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">'+n0(totalExc)+' 項</span></h3>'+
+    '<div class="statlist">'+excCats.map(function(c){return statRow(c.label,c.ct,"var(--crit)",dgAttrs(c.go),!c.ct);}).join("")+'</div>'+
+    (top3.length?'<div class="stathead">優先處理前 3 筆</div><div class="exc">'+top3.map(function(t){
+      return '<div><span class="bdg '+t.icon+'">'+(t.icon==="c"?"高":"注意")+'</span><div class="t"><b>'+esc(t.t)+'</b><p>'+esc(t.d)+'</p></div>'+
+        '<button class="btn btn-sm" data-act="dashgo"'+dgAttrs(t)+'>查看</button></div>';
+    }).join("")+'</div>':'<div class="pad dim">目前沒有需要優先處理的事件。</div>')+
+    (totalExc?'<div class="actbar"><button class="doc" data-act="dashgo"'+dgAttrs(topCat.go)+'">查看全部 →</button></div>':'')+
+  '</div>';
+
+  return '<div class="phead"><div><div class="eyebrow">總覽</div><h1>營運總覽</h1></div>'+
+    '<div class="sub">'+d(0)+'　八里主倉 · 八里加工區 · 五股週轉倉</div></div>'+
+    kpis+'<div class="grid g2">'+health+exception+'</div>';
+}
+function kpi(l,v,u,cls,go){
+  return '<button class="kpi '+cls+'" data-act="dashgo"'+dgAttrs(go)+'><div class="l">'+l+'</div><div class="v">'+n0(v)+'<small>'+u+'</small></div></button>';
+}
+
+/* ---- 銷售 ----
+   Quotation 回答：「這個需求，我能不能答應客戶？」
+   Sales Order 回答：「已經答應客戶的事情，目前做到哪裡？」 */
+function vSales(){
+  var tabs='<div class="tabs" role="tablist">'+
+    [["qt","報價單"],["so","銷售訂單"]].map(function(t){
+      return '<button class="tab" role="tab" aria-selected="'+(S.salesTab===t[0])+'" data-act="salestab" data-t="'+t[0]+'">'+t[1]+'</button>';
+    }).join("")+'</div>';
+  var doc=S.salesTab==="qt"?(findQT(S.qt)||DB.quotes[DB.quotes.length-1]):(findSO(S.so)||DB.sos[DB.sos.length-1]);
+  var crumbParts=["銷售管理",S.salesTab==="qt"?"報價單":"銷售訂單"];
+  if(doc)crumbParts.push(doc.no);
+  return '<div class="phead"><div>'+crumb(crumbParts)+'<h1>'+(S.salesTab==="qt"?"詢價與報價":"銷售訂單")+'</h1></div>'+
+    '<div style="flex-basis:100%;margin-top:2px">'+tabs+'</div></div>'+(S.salesTab==="qt"?vQuotes():vOrders());
+}
+
+/* ---- 報價單 ---- */
+function vQuotes(){
+  var qt=findQT(S.qt)||DB.quotes[DB.quotes.length-1];
+  var list='<div class="card"><h3>報價單<span class="sp"></span><button class="btn btn-sm btn-primary" data-act="opencreateqt">＋ 新增報價</button></h3>'+dataTable({
+    key:"qt",rows:DB.quotes,placeholder:"搜尋報價單號、客戶、品項",
+    search:function(x){return x.no+" "+custName(x.cust)+" "+x.lines.map(function(l){var it=item(l.item);return l.item+(it?it.name:"");}).join(" ");},
+    filters:[
+      {k:"status",label:"狀態",options:["已送出","已轉訂單","已失效"],match:function(r,v){return r.status===v;}},
+      {k:"cust",label:"客戶",options:DB.customers.slice(0,40).map(function(c){return [c.code,c.name];}),match:function(r,v){return r.cust===v;}}
+    ],
+    cols:[
+      {k:"no",label:"報價單號",sort:function(r){return r.no;},cell:function(r){return '<span class="mono">'+r.no+'</span>';}},
+      {k:"cust",label:"客戶",sort:function(r){return custName(r.cust);},cell:function(r){return esc(custName(r.cust));}},
+      {k:"total",label:"總金額",r:true,sort:function(r){return r.lines.reduce(function(a,l){return a+l.qty*l.price;},0);},
+        cell:function(r){return money(r.lines.reduce(function(a,l){return a+l.qty*l.price;},0));}},
+      {k:"status",label:"狀態",cell:function(r){return badge(r.status==="已轉訂單"?"已完成":r.status);}}
+    ],
+    defaultSort:function(rows){return rows.sort(function(a,b){return a.no<b.no?1:-1;});},
+    onRow:function(r){return {act:"qt",no:r.no,selected:qt&&qt.no===r.no};}
+  })+'</div>';
+
+  if(!qt)return '<div class="split">'+list+'<div class="card"><div class="pad dim">尚無報價單。按左上「＋ 新增報價」建立第一張。</div></div></div>';
+  var c=cust(qt.cust)||{contact:"",terms:"",note:""};
+  var tot=qt.lines.reduce(function(a,l){return a+l.qty*l.price;},0);
+  var rows=qt.lines.map(function(l,li){
+    var it=item(l.item),p=planSupply(l.item,l.qty),reqDate=l.requestedDate||qt.due;
+    var st=promiseStatus({stock:p.stock,conversion:p.conversion,purchase:p.purchase},reqDate,p.date);
+    var sq=salesQtyView(l),key=qt.no+"|"+li,exp=!!S.expand[key];
+    return '<tr><td>'+itemCell(l.item)+'</td>'+
+      '<td>'+sq.html+'</td>'+
+      '<td class="num">'+md(reqDate)+'</td>'+
+      '<td class="r num">'+q(p.stock+p.conversion+p.purchase)+' <span class="dim">'+it.uom+'</span></td>'+
+      '<td class="num">'+p.date+'</td>'+
+      '<td>'+badge(st.label)+'</td>'+
+      '<td class="r num">'+money(l.price)+'</td>'+
+      '<td class="r num">'+money(l.qty*l.price)+'</td>'+
+      '<td class="r"><button class="btn btn-sm" data-act="toggleexp" data-key="'+key+'">'+(exp?'收合':'查看供應明細')+'</button></td></tr>'+
+      (exp?'<tr><td colspan="9" style="padding:0">'+supplyDetailHTML(l.item,{stock:p.stock,conversion:p.conversion,purchase:p.purchase},p.date,p.otherWh,false)+'</td></tr>':'');
+  }).join("");
+  var canEdit=!qt.so&&qt.status!=="已失效";
+  var hdrActs='<span class="sp"></span>'+
+    (canEdit?'<button class="btn btn-sm" data-act="editqt" data-no="'+qt.no+'">編輯</button>':'')+
+    '<button class="btn btn-sm" data-act="dupqt" data-no="'+qt.no+'">複製</button>'+
+    (canEdit?'<button class="btn btn-sm" data-act="voidqt" data-no="'+qt.no+'">作廢</button>':'')+
+    badge(qt.status==="已轉訂單"?"已完成":qt.status);
+  var qtTabs='<div class="tabs" role="tablist" style="margin:0 0 0">'+
+    [["lines","報價明細"],["notes","備註與附件"]].map(function(t){
+      return '<button class="tab" role="tab" aria-selected="'+(S.qtDetailTab===t[0])+'" data-act="qtdtab" data-t="'+t[0]+'">'+t[1]+'</button>';
+    }).join("")+'</div>';
+  var linesPane='<div class="tw"><table class="tbl"><thead><tr><th>品項</th><th>客戶需求</th><th>要求交期</th><th class="r">可承諾數量</th>'+
+      '<th>承諾交期</th><th>供應狀態</th><th class="r">單價</th><th class="r">小計</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="actbar">'+(qt.so
+      ?'<button class="btn" data-act="go" data-view="sales" data-no="'+qt.so+'">查看銷售單 '+qt.so+'</button><span class="note">此報價已轉為訂單。</span>'
+      :'<button class="btn btn-primary" data-act="convq" data-no="'+qt.no+'">轉為銷售訂單</button><span class="note">'+
+        '客戶接受後由業務人員手動按此轉單（系統目前不記錄客戶如何、何時同意，也不檢查報價是否已逾期），Sales Qty／UOM、Base Qty／UOM 與要求交期均沿用報價；轉單同樣不動庫存。</span>')+'</div>';
+  var notesPane='<div class="pad" style="display:grid;gap:10px">'+
+    '<div class="field"><label for="f-qtnote">備註</label><textarea id="f-qtnote" rows="4" style="font:inherit;font-size:13px;padding:8px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--surface);color:var(--ink);resize:vertical">'+esc(qt.note||"")+'</textarea></div>'+
+    '<div class="dim" style="font-size:12px">附件上傳未在本 Demo 實作。</div>'+
+  '</div>';
+  var detail='<div class="card"><h3>'+qt.no+'　'+custName(qt.cust)+hdrActs+'</h3>'+
+    '<div class="pad"><div class="dl">'+
+      dt("客戶","<b>"+custName(qt.cust)+"</b>　"+c.contact)+dt("付款條件",c.terms)+dt("價格條件",c.note)+
+      dt("報價日期",'<span class="num">'+qt.date+'</span>')+dt("有效期至",'<span class="num">'+qt.valid+'</span>')+
+      dt("總金額",'<span class="num">'+money(tot)+'</span>（未稅）')+
+    '</div></div><div class="pad" style="padding-bottom:0">'+qtTabs+'</div>'+
+    (S.qtDetailTab==="notes"?notesPane:linesPane)+
+  '</div>';
+  return '<div class="split">'+list+detail+'</div>';
+}
+/* ---- 新增報價（Modal） ---- */
+function renderCreateQuoteModal(){
+  if(S.modal!=="createqt")return;
+  var first=DB.items[1];
+  var tot=S.draft.lines.reduce(function(a,l){return a+l.qty*l.price;},0);
+  var body='<div class="pad" style="display:grid;gap:12px">'+
+      '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">'+
+        '<div class="field"><label for="f-cust">客戶</label><select id="f-cust">'+
+          DB.customers.map(function(c){return '<option value="'+c.code+'"'+(S.draft.cust===c.code?' selected':'')+'>'+c.name+'</option>';}).join("")+'</select></div>'+
+        '<div class="field"><label for="f-item">紙品</label><select id="f-item">'+
+          DB.items.map(function(i,k){return '<option value="'+i.code+'"'+(k===1?' selected':'')+'>'+i.name+'</option>';}).join("")+'</select></div>'+
+        '<div class="field"><label for="f-qty">數量</label><input id="f-qty" type="number" min="1" step="1" value="120"></div>'+
+        '<div class="field"><label for="f-uom">單位</label><select id="f-uom">'+
+          first.uoms.map(function(u){return '<option value="'+u[0]+'">'+u[0]+'</option>';}).join("")+'</select></div>'+
+        '<div class="field"><label for="f-due">要求交期</label><input id="f-due" type="date" value="'+S.draft.due+'">'+
+          '<small class="dim" style="font-size:10.5px">套用到下一個加入的品項</small></div>'+
+      '</div>'+
+      '<div id="qcalc"></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" data-act="addline">加入明細</button>'+
+        '<span class="muted" style="font-size:12px">加入後可繼續選下一個紙品，各行各自記錄自己的要求交期。</span>'+
+        '<span class="sp" style="flex:1"></span>'+
+        '<button class="btn btn-sm" data-act="prefill">示範快速帶入</button><span class="hyp" title="這個一鍵帶入按鈕只存在於示範原型，正式系統沒有這個功能。">僅供示範</span></div>'+
+      (S.draft.lines.length?
+        '<div class="tw"><table class="tbl" style="border:1px solid var(--line);border-radius:4px">'+
+        '<thead><tr><th>紙品</th><th class="r">客戶需求</th><th>要求交期</th><th class="r">單價</th><th class="r">小計</th><th></th></tr></thead><tbody>'+
+        S.draft.lines.map(function(l,i){
+          var sq=salesQtyView(l);
+          return '<tr><td>'+itemCell(l.item)+'</td>'+
+            '<td class="r">'+sq.html+'</td>'+
+            '<td class="num">'+md(l.requestedDate)+'</td>'+
+            '<td class="r num">'+money(l.price)+'</td>'+
+            '<td class="r num">'+money(l.qty*l.price)+'</td>'+
+            '<td class="r"><button class="btn btn-sm" data-act="delline" data-i="'+i+'">移除</button></td></tr>';
+        }).join("")+'</tbody></table></div>'
+        :'<p class="dim" style="font-size:12.5px">尚未加入明細。選好紙品與數量後按「加入明細」。</p>')+
+    '</div>'+
+    '<div class="actbar"><button class="btn btn-primary" data-act="mkquote"'+(S.draft.lines.length?'':' disabled')+'>'+(S.editingQt?'儲存修改':'產生報價單')+'</button>'+
+      '<span class="note">'+(S.draft.lines.length?'共 '+S.draft.lines.length+' 個品項，合計 '+money(tot)+'（未稅）。':'請先加入至少一個明細。')+'</span></div>';
+  el("modal").innerHTML='<div class="sheet" role="dialog" aria-modal="true" aria-label="新增報價">'+
+    '<header><h2>'+(S.editingQt?'編輯報價單　'+S.editingQt:'新增報價單')+'</h2><div style="flex:1"></div><button class="btn btn-sm" data-act="closemodal">關閉</button></header>'+body+'</div>';
+}
+/* 表單即時試算（只更新這一塊，不重繪整頁，游標不會跳掉） */
+function updateQuoteCalc(){
+  var box=el("qcalc"); if(!box)return;
+  var ic=el("f-item").value,uom=el("f-uom").value,cust=el("f-cust").value;
+  var qty=toStock(ic,parseFloat(el("f-qty").value)||0,uom);
+  var it=item(ic),pr=priceFor(cust,ic),p=planSupply(ic,qty);
+  box.innerHTML=qtyGroup(ic,FULFILL_WH,
+    '<div class="qty"><div class="l">預估可交日</div><div class="v" style="font-size:15px">'+p.date+'</div></div>')+
+    '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12.5px" class="muted">'+
+      '<span>換算庫存單位：<b class="num">'+q(qty)+' '+it.uom+'</b>（'+n0(qty*it.kg)+' 公斤）</span>'+
+      '<span>單價：<b class="num">'+money(pr.price)+'</b>／'+it.uom+(pr.custom?' <span class="dim">（牌價 '+money(pr.list)+'）</span>':'')+'</span>'+
+      '<span>建議來源：'+allocBadges({stock:p.stock,conversion:p.conversion,purchase:p.purchase})+' <span class="dim">'+esc(p.why)+'</span></span>'+
+      '<span class="dim">履約倉庫：'+FULFILL_WH_NAME+(p.otherWh>0?'（其他倉庫另有 '+q(p.otherWh)+' '+it.uom+'）':'')+'</span>'+
+    '</div>';
+}
+
+/* Sales Order = Control Tower：需求 → 承諾 → 供應配置 → 履約狀態 → 關聯單據 → 出貨 → 發票 */
+function vOrders(){
+  var so=findSO(S.so)||DB.sos[DB.sos.length-1];
+  var fsRank={"待配置":0,"部分備齊":1,"已備齊":2,"部分出貨":3,"已出貨":4};
+  var list='<div class="card"><h3>銷售訂單</h3>'+dataTable({
+    key:"so",rows:DB.sos,placeholder:"搜尋單號、客戶、品項",
+    search:function(s){return s.no+" "+custName(s.cust)+" "+s.lines.map(function(l){var it=item(l.item);return l.item+(it?it.name:"");}).join(" ");},
+    filters:[
+      {k:"status",label:"訂單狀態",options:["已確認","已配置","部分出貨","已出貨","已結案",["open","待履約中"]],match:function(r,v){
+        if(v==="open")return r.status!=="已出貨"&&r.status!=="已結案";return r.status===v;}},
+      {k:"fs",label:"履約狀態",options:["待配置","部分備齊","已備齊","部分出貨","已出貨"],match:function(r,v){return fulfillmentStatusOf(r).label===v;}},
+      {k:"cust",label:"客戶",options:DB.customers.slice(0,40).map(function(c){return [c.code,c.name];}),match:function(r,v){return r.cust===v;}},
+      {k:"due",label:"交期",options:[["today","今日應交"],["late","已逾期"],["future","未來"]],match:function(r,v){
+        return v==="today"?r.due===d(0):(v==="late"?r.due<d(0):r.due>d(0));}},
+      {k:"ff",label:"供應方式",options:[["裁切","含裁切"],["採購","含採購"],["現貨","純現貨"]],match:function(r,v){
+        var has={現貨:false,裁切:false,採購:false},any=false;
+        r.lines.forEach(function(l){if(!l.fulfill)return;any=true;
+          if(l.fulfill.stock>0)has["現貨"]=true;if(l.fulfill.conversion>0)has["裁切"]=true;if(l.fulfill.purchase>0)has["採購"]=true;});
+        if(!any)return false;
+        return v==="現貨"?(has["現貨"]&&!has["裁切"]&&!has["採購"]):has[v];}}
+    ],
+    cols:[
+      {k:"no",label:"銷售訂單",sort:function(r){return r.no;},cell:function(r){return '<span class="mono">'+r.no+'</span>';}},
+      {k:"cust",label:"客戶",sort:function(r){return custName(r.cust);},cell:function(r){return esc(custName(r.cust));}},
+      {k:"due",label:"要求交期",sort:function(r){return r.due;},cell:function(r){return '<span class="num">'+md(r.due)+'</span>';}},
+      {k:"fs",label:"履約狀態",sort:function(r){return fsRank[fulfillmentStatusOf(r).label];},cell:function(r){return badge(fulfillmentStatusOf(r).label);}}
+    ],
+    defaultSort:function(rows){return rows.sort(function(a,b){return a.no<b.no?1:-1;});},
+    onRow:function(r){return {act:"so",no:r.no,selected:so&&so.no===r.no};}
+  })+'</div>';
+  if(!so)return '<div class="split">'+list+'<div class="card"><div class="pad dim">尚無銷售訂單。請先於「報價單」頁籤建立報價並轉單。</div></div></div>';
+  var c=cust(so.cust)||{contact:"",ship:"",terms:""};
+  var total=so.lines.reduce(function(a,l){return a+l.qty*l.price;},0);
+  var inv=invoiceOf(so.no);
+  var dn=DB.dns.filter(function(x){return x.so===so.no;})[0];
+  var fs=fulfillmentStatusOf(so),os=orderStatusOf(so);
+
+  /* SO Line 確認前：整行改用即時試算預覽（可承諾數量／承諾交期／供應狀態／供應配置皆一致），
+     只用淡色與「預覽」小字跟已確認的真實資料做區分，不讓同一行一半有資料一半是「—」。 */
+  var rows=so.lines.map(function(l,li){
+    var it=item(l.item),reqDate=l.requestedDate||so.due,confirmed=!!l.fulfill;
+    var p=confirmed?null:planSupply(l.item,l.qty);
+    var f=l.fulfill||(p?{stock:p.stock,conversion:p.conversion,purchase:p.purchase}:null);
+    var confQty=confirmed?l.confirmedQty:(f?rnd3(f.stock+f.conversion+f.purchase):null);
+    var confDate=confirmed?l.confirmedDate:(p?p.date:null);
+    var st=promiseStatus(f,reqDate,confDate);
+    var sq=salesQtyView(l),key=so.no+"|"+li,exp=!!S.expand[key];
+    var preview=!confirmed?'<br><small class="dim" style="font-size:10px">預覽</small>':'';
+    return '<tr><td>'+itemCell(l.item)+'</td>'+
+      '<td>'+sq.html+'</td>'+
+      '<td class="num">'+md(reqDate)+'</td>'+
+      '<td class="r num'+(confirmed?'':' dim')+'">'+(confQty!==null?q(confQty)+' '+it.uom:'<span class="dim">—</span>')+'</td>'+
+      '<td class="num'+(confirmed?'':' dim')+'">'+(confDate||'<span class="dim">—</span>')+'</td>'+
+      '<td>'+badge(st.label)+preview+'</td>'+
+      '<td'+(confirmed?'':' style="opacity:.8"')+'>'+allocBadges(f)+'</td>'+
+      '<td class="r num">'+money(l.qty*l.price)+'</td>'+
+      '<td class="r"><button class="btn btn-sm" data-act="toggleexp" data-key="'+key+'">'+(exp?'收合':'查看履約明細')+'</button></td></tr>'+
+      (exp&&f?'<tr><td colspan="9" style="padding:0">'+supplyDetailHTML(l.item,f,confDate,p?p.otherWh:rnd3(onHand(l.item)-onHand(l.item,FULFILL_WH)),confirmed)+'</td></tr>':'');
+  }).join("");
+
+  /* 供應建議面板（僅分析，尚未寫入任何資料）。
+     系統算出來的現貨／裁切／採購配置只是預設建議，不是唯一解——「手動調整」讓人可以直接覆寫
+     每一行的三個數量，系統即時重算承諾日期與履約狀態；確認供應方案時一律採用當下（可能已手動調整過）的數字。 */
+  var rec='';
+  if(so.status==="已確認"&&so.plan){
+    var editing=S.planEdit===so.no;
+    var prows=so.plan.map(function(p){
+      var it=item(p.item),l=so.lines.filter(function(x){return x.id===p.lineId;})[0];
+      var reqDate=l?(l.requestedDate||so.due):so.due;
+      var st=promiseStatus({stock:p.stock,conversion:p.conversion,purchase:p.purchase},reqDate,p.date);
+      return '<tr><td>'+itemCell(p.item)+'</td>'+
+        '<td class="r num">'+q(p.qty)+' <span class="dim">'+it.uom+'</span></td>'+
+        '<td class="num">'+md(reqDate)+'</td>'+
+        '<td class="r num">'+q(p.stock+p.conversion+p.purchase)+' <span class="dim">'+it.uom+'</span></td>'+
+        '<td class="num">'+p.date+'</td>'+
+        '<td class="wrap">'+(editing?allocEditRow(so.no,p.lineId,p):allocBadges({stock:p.stock,conversion:p.conversion,purchase:p.purchase}))+
+          '<br><small class="dim">'+esc(p.why)+'</small></td>'+
+        '<td>'+badge(st.label)+(p.manual?'<br><small class="dim">已手動調整</small>':'')+'</td></tr>';
+    }).join("");
+    rec='<div class="rec" style="margin-top:14px"><h4>供應建議　<span class="bdg sq n">尚未執行</span>'+
+        '<span class="sp" style="flex:1"></span>'+
+        '<button class="btn btn-sm" data-act="toggleplanedit" data-no="'+so.no+'">'+(editing?'完成調整':'手動調整')+'</button>'+
+        '<span style="font-weight:400;font-size:11.5px">分析於 '+so.planAt+'</span></h4>'+
+      (editing?'<div class="hnote" style="border-top:none">系統算出來的現貨／裁切／採購只是建議值，不是唯一解：可直接改下方數量欄位，系統會即時重算承諾日期與狀態。現貨欄位上限為目前可用量；裁切／採購沒有系統自動上限，實際產能與供應商能不能吃下，仍要靠人判斷。</div>':'')+
+      '<div class="recbody"><div class="tw"><table class="tbl">'+
+        '<thead><tr><th>品項</th><th class="r">需求</th><th>要求交期</th><th class="r">建議可承諾數量</th><th>建議承諾日期</th><th>供應配置</th><th>狀態</th></tr></thead>'+
+        '<tbody>'+prows+'</tbody></table></div>'+
+      '<div class="actbar"><button class="btn btn-primary" data-act="confirmplan" data-no="'+so.no+'">確認供應方案</button>'+
+        '<button class="btn" data-act="cancelplan" data-no="'+so.no+'">取消建議</button>'+
+        '<span class="note">確認後才會依目前面板上的數字建立庫存保留、裁切工單與採購單（含手動調整過的數字）。目前尚未寫入任何資料。</span></div>'+
+      '</div></div>';
+  }
+
+  var acts='';
+  if(so.status==="已確認"){
+    acts=so.plan
+      ?'<span class="note">供應建議已產生，請於下方面板確認或取消。</span>'
+      :'<span class="note" style="font-weight:600;color:var(--ink-2)">產生供應方案：</span>'+
+        '<button class="btn btn-primary" data-act="recplan" data-no="'+so.no+'">自動產生建議</button>'+
+        '<button class="btn" data-act="recplanmanual" data-no="'+so.no+'">手動輸入配置</button>'+
+        '<span class="note">兩者都只比對需求與可用量、不建立任何單據；手動輸入一樣先帶入系統算好的建議值，可直接改。</span>';
+  }else if(so.status==="已配置"){
+    acts=(dn?'<button class="btn" data-act="go" data-view="delivery" data-no="'+dn.no+'">查看出貨單 '+dn.no+'</button>':
+      '<button class="btn btn-primary" data-act="mkdn" data-no="'+so.no+'"'+(fs.label==="已備齊"?'':' disabled')+'>建立出貨單</button>')+
+      '<span class="note">'+(fs.label==="已備齊"?'所有明細皆已保留足量，可安排出貨。':'尚有明細未保留足量，需先完成裁切或採購收貨。')+
+      ' 目前以整單備齊後才建立出貨單，是否允許分批出貨待需求確認。</span>';
+  }else acts='<span class="note">此訂單已出貨完畢。</span>';
+
+  /* 發票：出庫後人工建立 */
+  var invBar='';
+  if(inv){
+    invBar='<div class="actbar"><span class="bdg g">發票已開立</span><button class="doc" data-act="chain" data-no="'+so.no+'">'+inv.no+'</button>'+
+      '<span class="note">未稅 '+money(inv.sub)+'　稅額 '+money(inv.tax)+'　<b>總計 '+money(inv.total)+'</b></span></div>';
+  }else if(so.status==="已出貨"){
+    invBar='<div class="actbar"><span class="bdg w">可開立發票</span>'+
+      '<button class="btn btn-primary" data-act="mkinv" data-no="'+so.no+'">建立銷貨發票</button>'+
+      '<span class="note">發票實際開立時點待客戶確認。</span></div>';
+  }
+
+  /* 關聯單據：這張訂單實際「已經產生」的下游文件，逐列列出、各自可 Drill-down。
+     跟「單據追溯」的差別：這裡是常駐在頁面上的快速總覽，單據追溯是含庫存總帳明細的完整鏈狀圖。 */
+  var allConv=[],allPO=[];
+  so.lines.forEach(function(l){
+    if(l.conv&&allConv.indexOf(l.conv)<0)allConv.push(l.conv);
+    if(l.po&&allPO.indexOf(l.po)<0)allPO.push(l.po);
+  });
+  var resvCount=DB.reservations.filter(function(r){return r.so===so.no;}).length;
+  function docBtns(arr,view,emptyLabel){
+    return arr.length?arr.map(function(no){return '<button class="doc" data-act="go" data-view="'+view+'" data-no="'+no+'">'+no+'</button>';}).join(""):badge(emptyLabel);
+  }
+  var notConfigured=so.status==="已確認"&&!so.lines.some(function(l){return l.fulfill;});
+  var docRow=function(lb,val){return '<div class="docrow"><span class="lb">'+lb+'</span><span class="val">'+val+'</span></div>';};
+  var related='<div class="card" style="margin-top:14px"><h3>關聯單據</h3>'+
+    (notConfigured?'<div class="hnote" style="border-top:none;border-bottom:1px dashed var(--line)">供應方案尚未確認，以下單據要等「確認供應方案」後才會產生。</div>':'')+
+    '<div class="doclist">'+
+      docRow("報價來源",so.qt?'<button class="doc" data-act="go" data-view="sales" data-no="'+so.qt+'" data-tab="qt">'+so.qt+'</button>':badge("直接下單"))+
+      docRow("庫存保留",resvCount?('<b class="num">'+resvCount+'</b> 筆'):badge("尚無保留"))+
+      docRow("裁切工單",docBtns(allConv,"conversion","尚無裁切工單"))+
+      docRow("採購單",docBtns(allPO,"purchase","尚無採購單"))+
+      docRow("出貨單",dn?'<button class="doc" data-act="go" data-view="delivery" data-no="'+dn.no+'">'+dn.no+'</button>':badge("尚無出貨單"))+
+      docRow("發票",inv?'<button class="doc" data-act="chain" data-no="'+so.no+'">'+inv.no+'</button>':badge("尚未開立"))+
+    '</div></div>';
+
+  var detail='<div class="card"><h3>'+so.no+'　'+custName(so.cust)+'<span class="sp"></span>'+badge(os.label)+badge(fs.label)+
+      '<button class="btn btn-sm" data-act="chain" data-no="'+so.no+'">單據追溯</button></h3>'+
+    '<div class="pad"><div class="dl">'+
+      dt("客戶","<b>"+custName(so.cust)+"</b>　"+c.contact)+dt("交貨地址",c.ship)+dt("付款條件",c.terms)+
+      dt("下單日期",'<span class="num">'+so.date+'</span>')+dt("要求交期",'<span class="num">'+so.due+'</span>')+
+      dt("訂單金額",'<span class="num">'+money(total)+'</span>')+
+      dt("來源報價",so.qt?'<button class="doc" data-act="go" data-view="sales" data-no="'+so.qt+'" data-tab="qt">'+so.qt+'</button>':'<span class="dim">直接下單</span>')+
+      dt("發票狀態",inv?'<span class="bdg g">'+inv.no+'</span>':(so.status==="已出貨"?'<span class="bdg w">可開立發票</span>':'<span class="dim">尚未開立</span>'))+
+    '</div></div>'+
+    '<div class="tw"><table class="tbl"><thead><tr><th>品項</th><th>客戶需求</th><th>要求交期</th><th class="r">可承諾數量</th>'+
+      '<th>承諾交期</th><th>履約狀態</th><th>供應配置</th><th class="r">小計</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="actbar">'+acts+'</div>'+invBar+
+  '</div>';
+
+  /* 右欄整組包成一個容器，作為 .split 的第二個 Grid 子項；
+     供應建議／Related Documents／關聯流程都疊在同一欄內，不會因為子元素數量超過
+     Grid 欄數而被自動排到左欄清單下方（先前的 bug）。 */
+  var rightCol='<div>'+detail+rec+related+fulfillFlow(so,dn,fs)+'</div>';
+  return '<div class="split">'+list+rightCol+'</div>';
+}
+function dt(l,v){return '<div><div class="l">'+l+'</div><div class="v">'+v+'</div></div>';}
+/* 麵包屑：純視覺導覽列，split-view 版面沒有獨立的「純列表頁」可回，因此不做假的可點擊語意。 */
+function crumb(parts){
+  return '<div class="crumb">'+parts.map(function(p,i){
+    return (i?'<span class="sep">/</span>':'')+(i===parts.length-1?'<span class="cur">':'<span>')+esc(p)+'</span>';
+  }).join("")+'</div>';
+}
+/* 關聯流程：SO 備齊 → 建立出貨單 → 出貨作業 → 出貨完成，對應實際狀態機，不是裝飾用假圖。 */
+function fulfillFlow(so,dn,fs){
+  var stages=[
+    {label:"訂單備齊",done:fs.label==="已備齊"||fs.label==="部分出貨"||fs.label==="已出貨"},
+    {label:"建立出貨單",done:!!dn},
+    {label:"出貨作業",done:!!dn&&dn.status!=="待揀貨"},
+    {label:"出貨完成",done:!!dn&&dn.status==="已送達"}
+  ];
+  var now=stages.length;
+  for(var i=0;i<stages.length;i++){if(!stages[i].done){now=i;break;}}
+  return '<div class="card" style="margin-top:14px"><h3>關聯流程</h3><div class="pad"><div class="steps">'+
+    stages.map(function(s,i){
+      var cls=s.done?"done":(i===now?"now":"");
+      return '<span class="step '+cls+'" style="cursor:default"><span class="n">'+(s.done?"✓":(i+1))+'</span>'+s.label+'</span>'+
+        (i<stages.length-1?'<span class="dim" style="margin:0 4px;align-self:center">→</span>':'');
+    }).join("")+'</div></div></div>';
+}
+/* 報價單：編輯／複製／作廢 */
+function editQuote(no){
+  var qt=findQT(no); if(!qt||qt.so||qt.status==="已失效")return;
+  S.draft={cust:qt.cust,due:qt.due,lines:qt.lines.map(function(l){
+    return {item:l.item,qty:l.qty,salesQty:l.salesQty,salesUom:l.salesUom,baseQty:l.baseQty,baseUom:l.baseUom,
+      requestedDate:l.requestedDate,price:l.price,list:l.list,custom:l.custom};})};
+  S.editingQt=no;S.modal="createqt";
+}
+function duplicateQuote(no){
+  var qt=findQT(no); if(!qt)return;
+  var nq={no:nextNo("qt"),cust:qt.cust,date:d(0),valid:d(14),due:qt.due,status:"已送出",so:"",note:"",
+    lines:qt.lines.map(function(l){
+      return {item:l.item,qty:l.qty,salesQty:l.salesQty,salesUom:l.salesUom,baseQty:l.baseQty,baseUom:l.baseUom,
+        requestedDate:l.requestedDate,price:l.price,list:l.list,custom:l.custom};})};
+  DB.quotes.push(nq);DB.rev++;
+  S.qt=nq.no;
+  toast("已複製為新報價單 "+nq.no+"，可再修改內容後送出。");
+}
+function voidQuote(no){
+  var qt=findQT(no); if(!qt||qt.so||qt.status==="已失效")return;
+  qt.status="已失效";DB.rev++;
+  toast("報價單 "+qt.no+" 已標記為失效。");
+}
+/* 新增／編輯報價共用同一個 Modal：有 S.editingQt 就更新既有報價，否則建立新報價。 */
+function saveQuoteDraft(){
+  if(!S.draft.lines.length)return;
+  if(S.editingQt){
+    var qt=findQT(S.editingQt);
+    if(qt&&!qt.so){
+      qt.cust=S.draft.cust;qt.due=S.draft.due;
+      qt.lines=S.draft.lines.map(function(l){return {item:l.item,qty:l.qty,
+        salesQty:l.salesQty,salesUom:l.salesUom,baseQty:l.baseQty,baseUom:l.baseUom,
+        requestedDate:l.requestedDate,price:l.price,list:l.list,custom:l.custom};});
+      DB.rev++;S.qt=qt.no;
+      toast("報價單 "+qt.no+" 已更新。");
+    }
+    S.editingQt=null;S.draft={cust:S.draft.cust,due:d(4),lines:[]};
+  }else createQuote();
+}
+
+/* ---- 採購 ----
+   缺料建議（Buyer 視角）：只彙總「還沒走過供應方案確認」的訂單需求（l.fulfill 尚未寫入），
+   扣掉目前可用庫存與在途採購量，算出真正還需要新下單的淨缺口。
+   已經確認過供應方案的訂單，缺口早就反映在對應的自動採購單裡（算進在途），不重複列入，避免同一個缺口算兩次。
+   來源限定「已核准（已轉訂單）」的訂單需求；安全存量式的預防性備貨是另一個題目，暫不併入。 */
+function shortageList(){
+  var demand={};
+  DB.sos.forEach(function(so){
+    /* 用訂單狀態（而非逐行 l.fulfill）判斷是否已核准供應方案：大量示範資料模式下，
+       系統會先幫每一行塞一個全零的 fulfill 物件方便畫面渲染，若改用「有沒有 fulfill」
+       來判斷，示範資料的需求會被誤判成「已處理」而整個消失，缺料建議就會顯示是空的
+       （這正是目前這個 bug 的成因）。「已確認」這個狀態只會在客戶核准、尚未確認供應
+       方案時出現，用它來判斷才精準、也對大量示範資料一樣成立。 */
+    if(so.status!=="已確認")return;
+    so.lines.forEach(function(l){
+      demand[l.item]=rnd3((demand[l.item]||0)+l.qty);
+    });
+  });
+  return Object.keys(demand).map(function(code){
+    var av=Math.max(0,available(code,FULFILL_WH)),inc=incoming(code);
+    var dem=demand[code],gap=rnd3(Math.max(0,dem-av-inc));
+    return {item:code,demand:dem,avail:av,incoming:inc,gap:gap};
+  }).sort(function(a,b){return b.gap-a.gap;});
+}
+/* 手動開單的預設值：從缺料建議帶入時給實際缺口量；自由新增時給一個跟安全存量成比例的參考量，
+   純粹方便 Buyer 起手，數量／供應商／單價都還是可以直接改。 */
+function defaultPODraft(itemCode,qty){
+  var it=item(itemCode)||DB.items[0];
+  var sup=supForItem(it.code)||DB.suppliers[0];
+  return {item:it.code,sup:sup.code,qty:rnd3(qty!==undefined&&qty>0?qty:Math.max(1,it.safety*2)),
+    cost:Math.round(it.price*0.86),eta:d(sup.days)};
+}
+/* 手動建立採購單：不綁定任何銷售訂單（so=""），純粹是 Buyer 自己判斷要買。
+   跟 confirmSO() 自動開的單走同一個 PO 資料結構，收貨、在途計算、單據追溯都共用同一套邏輯。 */
+function createManualPO(){
+  var pd=S.poDraft; if(!pd||!pd.item||!pd.sup||!(pd.qty>0))return;
+  var it=item(pd.item);
+  var po={no:nextNo("po"),sup:pd.sup,date:d(0),eta:pd.eta||d(7),status:"已確認",so:"",soLine:null,
+    lines:[{id:1,item:pd.item,qty:rnd3(pd.qty),recv:0,cost:Math.max(0,Math.round(pd.cost)||0)}]};
+  DB.pos.push(po);DB.rev++;
+  S.modal=null;S.poDraft=null;S.po=po.no;S.purchaseTab="po";
+  toast("已手動建立採購單 "+po.no+"（"+supName(pd.sup)+"　"+q(rnd3(pd.qty))+" "+it.uom+"）。");
+}
+function vPurchase(){
+  var tabs='<div class="tabs" role="tablist">'+
+    [["po","採購訂單"],["shortage","缺料建議"]].map(function(t){
+      return '<button class="tab" role="tab" aria-selected="'+(S.purchaseTab===t[0])+'" data-act="purtab" data-t="'+t[0]+'">'+t[1]+'</button>';
+    }).join("")+'</div>';
+  return '<div class="phead"><div><div class="eyebrow">採購管理</div><h1>採購與收貨</h1></div>'+
+    '<div class="sub">已下單未入庫的數量計入「在途」，不計入現有量。</div>'+
+    '<div style="flex-basis:100%;margin-top:2px">'+tabs+'</div></div>'+
+    (S.purchaseTab==="shortage"?vShortage():vPOList());
+}
+/* 缺料建議清單：以品項為單位彙總，不是以訂單為單位——Buyer 要看的是「這個紙品到底還缺多少」，
+   不是一張一張訂單去對。 */
+function vShortage(){
+  var rows=shortageList();
+  var trs=rows.map(function(r){
+    var it=item(r.item),sup=supForItem(r.item);
+    return '<tr><td>'+itemCell(r.item)+'</td>'+
+      '<td class="r num">'+q(r.demand)+' <span class="dim">'+it.uom+'</span></td>'+
+      '<td class="r num">'+q(r.avail)+'</td>'+
+      '<td class="r num">'+q(r.incoming)+'</td>'+
+      '<td class="r num"><b>'+(r.gap>0?q(r.gap):'—')+'</b></td>'+
+      '<td>'+(r.gap>0?badge("需採購"):badge("已足夠"))+'</td>'+
+      '<td>'+esc(sup?sup.name:(it.mill||"—"))+'</td>'+
+      '<td class="r">'+(r.gap>0?'<button class="btn btn-sm btn-primary" data-act="openpofromshort" data-item="'+r.item+'" data-qty="'+r.gap+'">開立採購單</button>':'<span class="dim">—</span>')+'</td></tr>';
+  }).join("");
+  if(!rows.length)trs='<tr><td colspan="8" class="dim" style="padding:18px 12px">目前沒有尚待確認供應方案的訂單需求。</td></tr>';
+  return '<div class="card"><h3>缺料建議<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">彙總尚未確認供應方案的訂單需求，扣掉現有可用庫存與在途採購後的淨缺口</span></h3>'+
+    '<div class="tw"><table class="tbl"><thead><tr><th>品項</th><th class="r">訂單需求</th><th class="r">現有可用</th><th class="r">在途採購</th><th class="r">淨缺口</th><th>狀態</th><th>建議供應商</th><th></th></tr></thead><tbody>'+trs+'</tbody></table></div>'+
+    hypNote("缺口只彙總「尚未確認供應方案」的訂單需求；已確認的訂單，缺口已自動變成對應的採購單並算進「在途」，不會在這裡重複列出。是否要再疊加安全存量觸發的預防性採購，待需求訪談確認。")+'</div>';
+}
+function vPOList(){
+  var po=findPO(S.po)||DB.pos[0];
+  var list='<div class="card"><h3>採購訂單<span class="sp"></span><button class="btn btn-sm btn-primary" data-act="opencreatepo">＋ 新增採購單</button></h3>'+dataTable({
+    key:"po",rows:DB.pos,placeholder:"搜尋單號、供應商、品項",
+    search:function(p){return p.no+" "+supName(p.sup)+" "+p.lines.map(function(l){var it=item(l.item);return l.item+(it?it.name:"");}).join(" ");},
+    filters:[
+      {k:"status",label:"狀態",options:["已確認","部分入庫","已入庫",["open","待入庫"]],match:function(r,v){
+        if(v==="open")return r.status!=="已入庫";return r.status===v;}},
+      {k:"sup",label:"供應商",options:DB.suppliers.slice(0,40).map(function(s){return [s.code,s.name];}),match:function(r,v){return r.sup===v;}},
+      {k:"eta",label:"到貨",options:[["late","已逾期"],["soon","7 天內"],["future","7 天後"]],match:function(r,v){
+        if(v==="late")return r.status!=="已入庫"&&r.eta<d(0);
+        if(v==="soon")return r.eta>=d(0)&&r.eta<=d(7);
+        return r.eta>d(7);}}
+    ],
+    cols:[
+      {k:"no",label:"單號",sort:function(r){return r.no;},cell:function(r){return '<span class="mono">'+r.no+'</span>';}},
+      {k:"sup",label:"供應商",sort:function(r){return supName(r.sup);},cell:function(r){return esc(supName(r.sup));}},
+      {k:"eta",label:"預計到貨",sort:function(r){return r.eta;},cell:function(r){
+        var late=r.status!=="已入庫"&&r.eta<d(0);
+        return '<span class="num">'+md(r.eta)+'</span>'+(late?' <span class="bdg c">逾期</span>':'');}},
+      {k:"status",label:"狀態",sort:function(r){return r.status;},cell:function(r){return badge(r.status);}}
+    ],
+    defaultSort:function(rows){return rows.sort(function(a,b){return a.no<b.no?1:-1;});},
+    onRow:function(r){return {act:"po",no:r.no,selected:po&&po.no===r.no};}
+  })+'</div>';
+  if(!po)return '<div class="split">'+list+'<div class="card"><div class="pad dim">尚無採購單。</div></div></div>';
+
+  var s=supp(po.sup)||{lead:"—",terms:"—"};
+  var rows=po.lines.map(function(l){
+    var it=item(l.item);
+    return '<tr><td>'+itemCell(l.item)+'</td><td class="r num">'+q(l.qty)+' <span class="dim">'+it.uom+'</span></td>'+
+      '<td class="r num">'+q(l.recv)+'</td><td class="r num">'+q(l.qty-l.recv)+'</td>'+
+      '<td class="r num">'+money(l.cost)+'</td><td class="r num">'+money(l.qty*l.cost)+'</td></tr>';
+  }).join("");
+  var detail='<div class="card"><h3>'+po.no+'　'+supName(po.sup)+'<span class="sp"></span>'+badge(po.status)+'</h3>'+
+    '<div class="pad"><div class="dl">'+
+      dt("供應商","<b>"+supName(po.sup)+"</b>")+dt("標準交期 "+hyp("供應商交期與補貨（安全存量、再訂購點）邏輯為 Demo 假設，待客戶確認。"),s.lead)+dt("付款條件",s.terms)+
+      dt("下單日",'<span class="num">'+po.date+'</span>')+dt("預計到貨",'<span class="num">'+po.eta+'</span>')+
+      dt("來源訂單",po.so?'<button class="doc" data-act="go" data-view="sales" data-no="'+po.so+'">'+po.so+'</button>':'<span class="dim">庫存補貨</span>')+
+    '</div></div>'+
+    '<div class="tw"><table class="tbl"><thead><tr><th>品項</th><th class="r">訂購量</th><th class="r">已入庫</th><th class="r">未入庫</th><th class="r">單價</th><th class="r">小計</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="actbar">'+(po.status==="已入庫"
+      ?'<span class="note">已完成驗收，庫存總帳已產生入庫異動。</span>'
+      :'<button class="btn btn-primary" data-act="recv" data-no="'+po.no+'">驗收入庫</button><span class="note">入庫後才會寫入庫存總帳；在此之前只計「在途」。</span>')+'</div>'+
+    hypNote("是否允許分批到貨、實收量與訂購量不符如何處理、是否需記錄供應商批號與捲號，均待客戶確認。")+'</div>';
+
+  return '<div class="split">'+list+detail+'</div>';
+}
+/* 手動新增採購單 Modal：自由新增（列表頁「＋新增採購單」）與從缺料建議一鍵帶入，走同一個表單。
+   單一品項、單一供應商——跟目前自動開單的 PO 資料結構（一張單一行）一致，不做多品項合併下單。 */
+function renderCreatePOModal(){
+  if(S.modal!=="createpo")return;
+  var pd=S.poDraft; if(!pd)return;
+  var it=item(pd.item),sup=supp(pd.sup)||{lead:"—",days:7,terms:"—"};
+  var subtotal=rnd3(pd.qty)*(pd.cost||0);
+  var body='<div class="pad" style="display:grid;gap:12px">'+
+      '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">'+
+        '<div class="field"><label for="pf-item">紙品</label><select id="pf-item">'+
+          DB.items.map(function(i){return '<option value="'+i.code+'"'+(pd.item===i.code?' selected':'')+'>'+i.name+'</option>';}).join("")+'</select></div>'+
+        '<div class="field"><label for="pf-sup">供應商</label><select id="pf-sup">'+
+          DB.suppliers.map(function(s){return '<option value="'+s.code+'"'+(pd.sup===s.code?' selected':'')+'>'+s.name+'</option>';}).join("")+'</select></div>'+
+        '<div class="field"><label for="pf-qty">數量（'+it.uom+'）</label><input id="pf-qty" type="number" min="0" step="0.001" value="'+pd.qty+'"></div>'+
+        '<div class="field"><label for="pf-cost">單價</label><input id="pf-cost" type="number" min="0" step="1" value="'+pd.cost+'"></div>'+
+        '<div class="field"><label for="pf-eta">預計到貨</label><input id="pf-eta" type="date" value="'+pd.eta+'"></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px" class="muted">'+
+        '<span>供應商標準交期：<b class="num">'+sup.lead+'</b>（'+sup.terms+'）</span>'+
+        '<span>小計：<b class="num">'+money(subtotal)+'</b></span>'+
+        '<span>目前可用量：<b class="num">'+q(Math.max(0,available(pd.item,FULFILL_WH)))+'</b> '+it.uom+'</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="actbar"><button class="btn btn-primary" data-act="mkpo"'+(pd.qty>0?'':' disabled')+'>建立採購單</button>'+
+      '<span class="note">此單不綁定特定銷售訂單，視為 Buyer 主動備貨；建立後狀態為「已確認」，驗收入庫後才寫入庫存總帳。</span></div>';
+  el("modal").innerHTML='<div class="sheet" role="dialog" aria-modal="true" aria-label="新增採購單">'+
+    '<header><h2>新增採購單</h2><div style="flex:1"></div><button class="btn btn-sm" data-act="closemodal">關閉</button></header>'+body+'</div>';
+}
+
+/* ---- 庫存 ---- */
+function vInventory(){
+  var tabs='<div class="tabs" role="tablist">'+
+    [["stock","庫存狀態"],["ledger","庫存總帳"],["roll","捲別明細"],["count","盤點與調整"]].map(function(t){
+      return '<button class="tab" role="tab" aria-selected="'+(S.invTab===t[0])+'" data-act="invtab" data-t="'+t[0]+'">'+t[1]+'</button>';
+    }).join("")+'</div>';
+  var body,whOpts=DB.warehouses.map(function(w){return [w.code,w.name];});
+  if(S.invTab==="stock"){
+    body='<div class="card"><h3>料號 × 倉別<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">可用量 ＝ 現有量 − 已保留</span></h3>'+dataTable({
+      key:"inv",rows:stockPairs(),placeholder:"搜尋料號、品名、紙種、規格",
+      search:function(p){var it=item(p.item);return p.item+" "+it.name+" "+it.grade+" "+it.spec+" "+whName(p.wh);},
+      filters:[
+        {k:"wh",label:"倉別",options:whOpts,match:function(r,v){return r.wh===v;}},
+        /* 庫存健康：以可用量（Available＝現有量－已保留）判定，不是現有量；供 Dashboard 鑽研使用 */
+        {k:"health",label:"庫存狀態",options:[["below","低於安全存量"],["low","低庫存"],["out","缺貨"],["ok","正常"],["inc","補貨中"]],match:function(r,v){
+          var av=available(r.item),sf=item(r.item).safety;
+          if(v==="below")return av<sf;
+          if(v==="low")return av>0&&av<sf;
+          if(v==="out")return av<=0;
+          if(v==="ok")return av>=sf;
+          if(v==="inc")return incoming(r.item)>0;
+          return true;}}
+      ],
+      cols:[
+        {k:"item",label:"品項",sort:function(r){return r.item;},cell:function(r){return itemCell(r.item);}},
+        {k:"wh",label:"倉別",sort:function(r){return r.wh;},cell:function(r){return esc(whName(r.wh));}},
+        {k:"oh",label:"現有量",r:true,sort:function(r){return onHand(r.item,r.wh);},cell:function(r){
+          return q(onHand(r.item,r.wh))+' <span class="dim">'+item(r.item).uom+'</span>';}},
+        {k:"rs",label:"已保留",r:true,sort:function(r){return reserved(r.item,r.wh);},cell:function(r){
+          return '<span style="color:var(--warn)">'+q(reserved(r.item,r.wh))+'</span>';}},
+        {k:"av",label:"可用量",r:true,sort:function(r){return available(r.item,r.wh);},cell:function(r){
+          return '<b>'+q(available(r.item,r.wh))+'</b>';}},
+        {k:"ic",label:"在途",r:true,cell:function(r){return '<span style="color:var(--info)">'+q(incoming(r.item))+'</span>';}},
+        {k:"sf",label:"安全存量",r:true,cell:function(r){return '<span class="dim">'+item(r.item).safety+'</span>';}},
+        {k:"fl",label:"",cell:function(r){return onHand(r.item)<item(r.item).safety?'<span class="bdg w">低於安全存量</span>':'';}}
+      ],
+      defaultSort:function(rows){return rows.sort(function(a,b){return a.item<b.item?-1:(a.item>b.item?1:(a.wh<b.wh?-1:1));});}
+    })+hypNote("安全存量水準、保留時機（確認訂單即保留 vs 揀貨時才保留）、是否允許負庫存，均為 Demo 假設。")+'</div>';
+  }else if(S.invTab==="ledger"){
+    var evOpts=["期初庫存","採購入庫","銷售出庫","倉別調撥","裁切領料","裁切產出","剩料回庫","盤點調整"];
+    body='<div class="card"><h3>庫存總帳<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">所有庫存數字的唯一來源．預設顯示最近異動</span></h3>'+dataTable({
+      key:"lg",rows:DB.ledger,placeholder:"搜尋料號、來源單據、事件、備註",
+      search:function(l){return l.item+" "+l.ref+" "+l.event+" "+l.note+" "+l.id;},
+      filters:[
+        {k:"ev",label:"事件",options:evOpts,match:function(r,v){return r.event===v;}},
+        {k:"wh",label:"倉別",options:whOpts,match:function(r,v){return r.wh===v;}},
+        {k:"dt",label:"日期",options:[["today","今日"],["w","近 7 天"],["m","近 30 天"]],match:function(r,v){
+          return v==="today"?r.date===d(0):(v==="w"?r.date>=d(-7):r.date>=d(-30));}},
+        {k:"dir",label:"方向",options:[["in","入庫 +"],["out","出庫 −"]],match:function(r,v){return v==="in"?r.qty>0:r.qty<0;}}
+      ],
+      cols:[
+        {k:"id",label:"異動編號",sort:function(r){return r.id;},cell:function(r){return '<span class="mono dim">'+r.id+'</span>';}},
+        {k:"date",label:"日期",sort:function(r){return r.date;},cell:function(r){return '<span class="num">'+md(r.date)+'</span>';}},
+        {k:"event",label:"事件",sort:function(r){return r.event;},cell:function(r){return esc(r.event);}},
+        {k:"item",label:"品項",sort:function(r){return r.item;},cell:function(r){return '<span class="mono" style="font-size:12px">'+esc(r.item)+'</span>';}},
+        {k:"wh",label:"倉別",cell:function(r){return esc(whName(r.wh));}},
+        {k:"qty",label:"數量",r:true,sort:function(r){return r.qty;},cell:function(r){
+          var it=item(r.item);
+          return '<span style="color:'+(r.qty>0?"var(--good)":"var(--crit)")+'">'+(r.qty>0?"+":"")+q(r.qty)+'</span> <span class="dim">'+(it?it.uom:"")+'</span>';}},
+        {k:"ref",label:"來源單據",sort:function(r){return r.ref;},cell:function(r){
+          return r.ref?'<span class="mono" style="font-size:12px">'+esc(r.ref)+'</span>':'<span class="dim">—</span>';}},
+        {k:"note",label:"備註",cell:function(r){return '<small>'+esc(r.note)+'</small>';}}
+      ],
+      defaultSort:function(rows){return rows.reverse();},
+      rowClass:function(r){return S.flash.indexOf(r.id)>=0?"flash":"";}
+    })+'</div>';
+  }else if(S.invTab==="count"){
+    var hist=DB.counts.length?'<div class="card" style="margin-top:14px"><h3>盤點紀錄</h3>'+dataTable({
+      key:"sc",rows:DB.counts,placeholder:"搜尋單號、原因",
+      search:function(sc){return sc.no+" "+sc.reason;},
+      cols:[
+        {k:"no",label:"單號",sort:function(r){return r.no;},cell:function(r){return '<span class="mono">'+r.no+'</span>';}},
+        {k:"date",label:"日期",sort:function(r){return r.date;},cell:function(r){return '<span class="num">'+md(r.date)+'</span>';}},
+        {k:"reason",label:"原因",cell:function(r){return esc(r.reason);}},
+        {k:"lines",label:"調整品項",cell:function(r){
+          return '<small>'+r.lines.map(function(l){return esc(l.item)+" "+(l.diff>0?"+":"")+q(l.diff);}).join("　")+'</small>';}}
+      ],
+      defaultSort:function(rows){return rows.reverse();}
+    })+'</div>':'';
+    body='<div class="card"><h3>盤點作業<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">實盤數量與帳上不同時，過帳產生調整異動</span></h3>'+dataTable({
+      key:"cnt",rows:stockPairs(),placeholder:"搜尋料號、品名",
+      search:function(p){var it=item(p.item);return p.item+" "+it.name+" "+whName(p.wh);},
+      filters:[{k:"wh",label:"倉別",options:whOpts,match:function(r,v){return r.wh===v;}}],
+      cols:[
+        {k:"item",label:"品項",sort:function(r){return r.item;},cell:function(r){return itemCell(r.item);}},
+        {k:"wh",label:"倉別",cell:function(r){return esc(whName(r.wh));}},
+        {k:"book",label:"帳上數量",r:true,cell:function(r){
+          return q(onHand(r.item,r.wh))+' <span class="dim">'+item(r.item).uom+'</span>';}},
+        {k:"act",label:"實盤數量",r:true,cell:function(r){
+          var k=r.item+"|"+r.wh,val=S.count[k]!==undefined?S.count[k]:String(onHand(r.item,r.wh));
+          return '<input type="number" step="0.001" data-cnt="'+k+'" value="'+esc(val)+'" style="width:96px;text-align:right;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);color:var(--ink)">';}},
+        {k:"diff",label:"差異",r:true,cell:function(r){
+          var k=r.item+"|"+r.wh,book=onHand(r.item,r.wh);
+          var val=S.count[k]!==undefined?parseFloat(S.count[k]):book;
+          var diff=rnd3((isNaN(val)?book:val)-book);
+          return '<span id="diff-'+r.item+'-'+r.wh+'" style="color:'+(diff?(diff>0?"var(--good)":"var(--crit)"):"var(--ink-3)")+'">'+(diff>0?"+":"")+q(diff)+'</span>';}}
+      ],
+      defaultSort:function(rows){return rows.sort(function(a,b){return a.item<b.item?-1:1;});}
+    })+
+      '<div class="actbar">'+
+        '<div class="field" style="max-width:170px"><label for="f-reason">調整原因</label><select id="f-reason">'+
+          ["盤盈盤虧","破損報廢","重新計量"].map(function(r){return '<option'+(S.reason===r?' selected':'')+'>'+r+'</option>';}).join("")+'</select></div>'+
+        '<button class="btn btn-primary" data-act="postcount">過帳盤點差異</button>'+
+        '<span class="note">只有差異不為零的品項會產生調整異動，並寫入庫存總帳。輸入值在切換分頁時會保留。</span>'+
+      '</div>'+
+      hypNote("盤點頻率、盤盈盤虧的核准層級與調整原因分類，待客戶確認。")+'</div>'+hist;
+  }else{
+    body='<div class="card"><h3>捲別明細<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">母捲與裁切剩料的個別追蹤</span></h3>'+dataTable({
+      key:"roll",rows:DB.rolls,placeholder:"搜尋捲號、料號、來源",
+      search:function(r){return r.no+" "+r.item+" "+r.src+" "+(r.parent||"")+" "+(r.conv||"");},
+      filters:[
+        {k:"status",label:"狀態",options:["在庫","已裁切"],match:function(r,v){return r.status===v;}},
+        {k:"wh",label:"倉別",options:whOpts,match:function(r,v){return r.wh===v;}}
+      ],
+      cols:[
+        {k:"no",label:"捲號",sort:function(r){return r.no;},cell:function(r){return '<span class="mono">'+r.no+'</span>';}},
+        {k:"item",label:"品項",sort:function(r){return r.item;},cell:function(r){return '<span class="mono" style="font-size:12px">'+esc(r.item)+'</span>';}},
+        {k:"wh",label:"倉別",cell:function(r){return esc(whName(r.wh));}},
+        {k:"kg0",label:"原始重量",r:true,sort:function(r){return r.kg0;},cell:function(r){return n0(r.kg0)+' kg';}},
+        {k:"kg",label:"剩餘重量",r:true,sort:function(r){return r.kg;},cell:function(r){return n0(r.kg)+' kg';}},
+        {k:"status",label:"狀態",cell:function(r){return badge(r.status);}},
+        {k:"src",label:"來源",cell:function(r){
+          return '<small>'+esc(r.src)+(r.parent?'　母捲 '+r.parent:'')+(r.conv&&r.status==="已裁切"?'　'+r.conv:'')+'</small>';}}
+      ]
+    })+hypNote("是否真的需要管理到每一捲（Roll ID）、剩料如何重新入庫與再利用，待現場確認。")+'</div>';
+  }
+  return '<div class="phead"><div><div class="eyebrow">庫存管理</div><h1>庫存</h1></div>'+
+    '<div class="sub">畫面上沒有可以直接改寫的庫存欄位，數字全部由總帳事件推導。</div>'+
+    '<div style="flex-basis:100%;margin-top:2px">'+tabs+'</div></div>'+body;
+}
+
+/* ---- 裁切加工 ---- */
+function vConversion(){
+  if(!DB.convs.length)return '<div class="phead"><h1>裁切加工</h1></div><div class="card"><div class="pad dim">尚無裁切工單。</div></div>';
+  var cv=findCV(S.cv)||DB.convs[DB.convs.length-1];
+  var list='<div class="card"><h3>裁切工單</h3>'+dataTable({
+    key:"cv",rows:DB.convs,placeholder:"搜尋工單號、來源訂單、品項",
+    search:function(c){var i1=item(c.inItem),i2=item(c.outItem);
+      return c.no+" "+(c.so||"")+" "+c.inItem+" "+c.outItem+" "+(i1?i1.name:"")+" "+(i2?i2.name:"");},
+    filters:[
+      {k:"status",label:"狀態",options:["已規劃","已釋放","進行中","已完成",["wip","待加工／加工中"]],match:function(r,v){
+        if(v==="wip")return r.status==="已釋放"||r.status==="進行中";return r.status===v;}},
+      {k:"src",label:"來源",options:[["so","接單生產"],["stk","備貨生產"]],match:function(r,v){return v==="so"?!!r.so:!r.so;}}
+    ],
+    cols:[
+      {k:"no",label:"單號",sort:function(r){return r.no;},cell:function(r){return '<span class="mono">'+r.no+'</span>';}},
+      {k:"in",label:"投入",r:true,sort:function(r){return r.inQty;},cell:function(r){return '<span class="num">'+r.inQty+' 捲</span>';}},
+      {k:"out",label:"產出",r:true,sort:function(r){return r.outQty;},cell:function(r){return '<span class="num">'+r.outQty+' 令</span>';}},
+      {k:"status",label:"狀態",cell:function(r){return badge(r.status);}}
+    ],
+    defaultSort:function(rows){return rows.sort(function(a,b){return a.no<b.no?1:-1;});},
+    onRow:function(r){return {act:"cv",no:r.no,selected:cv&&cv.no===r.no};}
+  })+'</div>';
+  var done=cv.status==="已完成";
+  var flow='<div class="tw"><table class="tbl"><thead><tr><th>項目</th><th>品項</th><th class="r">數量</th><th class="r">換算重量</th><th>說明</th></tr></thead><tbody>'+
+    '<tr><td><span class="bdg sq k">投入</span></td><td>'+itemCell(cv.inItem)+'</td><td class="r num">'+cv.inQty+' 捲</td><td class="r num">'+n0(cv.inKg)+' kg</td><td><small>母捲 '+esc(cv.rolls.join("、"))+'</small></td></tr>'+
+    '<tr><td><span class="bdg sq g">產出</span></td><td>'+itemCell(cv.outItem)+'</td><td class="r num">'+cv.outQty+' 令</td><td class="r num">'+n1(cv.outKg)+' kg</td><td><small>裁切完成品，入八里主倉</small></td></tr>'+
+    '<tr><td><span class="bdg sq i">剩料</span></td><td>'+(cv.remainKg?itemCell(cv.inItem):'<span class="dim">無</span>')+'</td><td class="r num">'+(cv.remainKg?q(Math.round(cv.remainKg/item(cv.inItem).kg*1000)/1000)+' 捲':'—')+'</td><td class="r num">'+n0(cv.remainKg)+' kg</td><td><small>'+(cv.remainRoll?'殘捲 '+cv.remainRoll+'　回庫可再用':'完成後產生殘捲')+'</small></td></tr>'+
+    '<tr><td><span class="bdg sq c">損耗</span></td><td><span class="dim">切邊、破損</span></td><td class="r dim">—</td><td class="r num">'+n1(cv.scrapKg)+' kg</td><td><small>不回庫，反映在良率</small></td></tr>'+
+    '</tbody></table></div>';
+  var detail='<div class="card"><h3>'+cv.no+'<span class="sp"></span>'+badge(cv.status)+'</h3>'+
+    '<div class="pad"><div class="dl">'+
+      dt("加工倉別",whName(cv.wh))+dt("工單日期",'<span class="num">'+cv.date+'</span>')+
+      dt("來源訂單",cv.so?'<button class="doc" data-act="go" data-view="sales" data-no="'+cv.so+'">'+cv.so+'</button>':'<span class="dim">備貨生產</span>')+
+      dt("良率 "+hyp("良率、損耗率與固定 60 公斤剩料為 Demo 假設數字，實際裁切耗損待客戶提供。"),'<span class="num" style="font-size:17px;color:'+(cv.yield>=95?"var(--good)":"var(--warn)")+'"><b>'+n1(cv.yield)+'%</b></span>')+
+    '</div></div>'+flow+
+    '<div class="actbar">'+(done
+      ?'<span class="note">已完成，庫存總帳共 5 筆異動：調撥出、調撥入、領料、產出、剩料回庫。</span>'
+      :'<button class="btn btn-primary" data-act="runcv" data-no="'+cv.no+'">完成裁切</button><span class="note">完成後一次寫入調撥、領料、產出與剩料回庫。</span>')+'</div>'+
+    hypNote("母捲挑選規則（先進先出或人工經驗）、裁切前置 2 天、剩料是否回庫再利用、損耗如何認列，均為 Demo 假設。")+'</div>';
+  return '<div class="phead"><div><div class="eyebrow">裁切管理</div><h1>裁切加工</h1></div>'+
+    '<div class="sub">母捲 → 完成品 ＋ 剩料 ＋ 損耗，投入與產出兩邊都進總帳。</div></div>'+
+    '<div class="split">'+list+detail+'</div>';
+}
+
+/* ---- 配送 ---- */
+function vDelivery(){
+  var dn=findDN(S.dn)||DB.dns[0];
+  var list='<div class="card"><h3>出貨單</h3>'+dataTable({
+    key:"dn",rows:DB.dns,placeholder:"搜尋出貨單號、來源訂單、客戶",
+    search:function(x){return x.no+" "+x.so+" "+custName(x.cust);},
+    filters:[
+      {k:"status",label:"狀態",options:DNFLOW.concat([["open","未完成"]]),match:function(r,v){
+        if(v==="open")return r.status!=="已送達";return r.status===v;}},
+      {k:"cust",label:"客戶",options:DB.customers.slice(0,40).map(function(c){return [c.code,c.name];}),match:function(r,v){return r.cust===v;}},
+      {k:"dt",label:"日期",options:[["today","今日"],["w","近 7 天"]],match:function(r,v){return v==="today"?r.date===d(0):r.date>=d(-7);}}
+    ],
+    cols:[
+      {k:"no",label:"單號",sort:function(r){return r.no;},cell:function(r){return '<span class="mono">'+r.no+'</span>';}},
+      {k:"cust",label:"客戶",sort:function(r){return custName(r.cust);},cell:function(r){return esc(custName(r.cust));}},
+      {k:"date",label:"日期",sort:function(r){return r.date;},cell:function(r){return '<span class="num">'+md(r.date)+'</span>';}},
+      {k:"status",label:"狀態",sort:function(r){return DNFLOW.indexOf(r.status);},cell:function(r){return badge(r.status);}}
+    ],
+    defaultSort:function(rows){return rows.sort(function(a,b){return a.no<b.no?1:-1;});},
+    onRow:function(r){return {act:"dn",no:r.no,selected:dn&&dn.no===r.no};}
+  })+'</div>';
+  if(!dn)return '<div class="phead"><div class="eyebrow">出貨管理</div><h1>配送出貨</h1></div>'+
+    '<div class="split">'+list+'<div class="card"><div class="pad dim">尚無出貨單。</div></div></div>';
+  var c=cust(dn.cust)||{ship:"",contact:""};
+  var i=DNFLOW.indexOf(dn.status);
+  var track='<div class="pad" style="border-bottom:1px solid var(--line)"><div class="steps">'+
+    DNFLOW.map(function(s,k){
+      var cls=k<i?"done":(k===i?"now":"");
+      return '<span class="step '+cls+'" style="cursor:default"><span class="n">'+(k<i?"✓":(k+1))+'</span>'+s+'</span>';
+    }).join("")+'</div></div>';
+  var rows=dn.lines.map(function(l){
+    return '<tr><td>'+itemCell(l.item)+'</td><td class="r num">'+q(l.qty)+' <span class="dim">'+item(l.item).uom+'</span></td>'+
+      '<td class="r num">'+n0(l.qty*item(l.item).kg)+' kg</td></tr>';
+  }).join("");
+  var totKg=dn.lines.reduce(function(a,l){return a+l.qty*item(l.item).kg;},0);
+  var posted=i>=DNFLOW.indexOf("已出車"),so2=findSO(dn.so);
+  var detail='<div class="card"><h3>'+dn.no+'　'+custName(dn.cust)+'<span class="sp"></span>'+badge(dn.status)+'</h3>'+track+
+    '<div class="pad"><div class="dl">'+
+      dt("來源訂單",'<button class="doc" data-act="go" data-view="sales" data-no="'+dn.so+'">'+dn.so+'</button>')+
+      dt("送貨地址",c.ship)+dt("聯絡人",c.contact)+
+      dt("出貨日",'<span class="num">'+dn.date+'</span>')+dt("總重量",'<span class="num">'+n0(totKg)+' kg</span>')+
+      dt("庫存過帳",posted?'<span class="bdg g">已過帳</span>':'<span class="bdg n">尚未過帳</span>')+
+    '</div></div>'+
+    '<div class="tw"><table class="tbl"><thead><tr><th>品項</th><th class="r">出貨量</th><th class="r">換算重量</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="actbar">'+(i<DNFLOW.length-1
+      ?'<button class="btn btn-primary" data-act="advdn" data-no="'+dn.no+'">推進為「'+DNFLOW[i+1]+'」</button><span class="note">'+(DNFLOW[i+1]==="已出車"?'出車時才寫入銷售出庫，並釋放保留量。':'狀態推進不影響庫存。')+'</span>'
+      :'<span class="note">配送完成，客戶已簽收。</span>')+
+      (posted&&so2&&!invoiceOf(so2.no)?'<span class="sp" style="flex:1"></span><span class="bdg w">可開立發票</span><button class="btn" data-act="mkinv" data-no="'+so2.no+'">建立銷貨發票</button>':'')+
+      '</div>'+
+    hypNote("<b>Demo 假設：</b>貨物進入「已出車」時執行銷售出庫。正式庫存過帳時點（揀貨完成、出車、或客戶簽收）與六段狀態流程，均待需求訪談確認。")+'</div>';
+  return '<div class="phead"><div><div class="eyebrow">出貨管理</div><h1>配送出貨</h1></div>'+
+    '<div class="sub">六段狀態；只有「已出車」這一步會動到庫存。</div></div>'+
+    '<div class="split">'+list+detail+'</div>';
+}
+
+/* ---- 主檔（全部可編輯：紙品／客戶／供應商／倉別；客戶專屬價格併入客戶明細） ----
+   新增走 Modal（跟新增報價／新增採購單同一套介面語言）；既有資料直接在明細欄位編輯，
+   change（欄位失焦或 Enter）就即時寫回，不用另外按「儲存」。刪除前一律檢查有沒有
+   單據／庫存紀錄還參照著它，避免刪掉正在使用中的資料，讓畫面後面找不到對應資料而壞掉。 */
+function applyMasterEdit(type,code,field,raw){
+  var rec=type==="item"?item(code):type==="cust"?cust(code):type==="sup"?supp(code):type==="wh"?idx().wh[code]:null;
+  if(!rec)return;
+  var numFields={item:{gsm:1,kg:1,price:1,safety:1},sup:{days:1}};
+  var val=(numFields[type]&&numFields[type][field])?Math.max(0,parseFloat(raw)||0):raw;
+  rec[field]=val;
+  if(type==="sup"&&field==="days")rec.lead=val+" 天"; /* .lead 是給人看的字串，.days 是算日期用的數字，改天數要連帶同步顯示字串 */
+  DB.rev++;
+}
+function refsOfItem(code){
+  var n=0;
+  DB.quotes.forEach(function(x){x.lines.forEach(function(l){if(l.item===code)n++;});});
+  DB.sos.forEach(function(x){x.lines.forEach(function(l){if(l.item===code)n++;});});
+  DB.pos.forEach(function(x){x.lines.forEach(function(l){if(l.item===code)n++;});});
+  DB.convs.forEach(function(x){if(x.inItem===code||x.outItem===code)n++;});
+  DB.ledger.forEach(function(x){if(x.item===code)n++;});
+  DB.rolls.forEach(function(x){if(x.item===code)n++;});
+  DB.items.forEach(function(x){if(x.parent===code)n++;});
+  DB.customers.forEach(function(x){if(x.prices&&x.prices[code]!==undefined)n++;});
+  return n;
+}
+function refsOfCust(code){
+  var n=0;
+  DB.quotes.forEach(function(x){if(x.cust===code)n++;});
+  DB.sos.forEach(function(x){if(x.cust===code)n++;});
+  return n;
+}
+function refsOfSup(code){
+  var s=supp(code); if(!s)return 0;
+  var n=0;
+  DB.pos.forEach(function(x){if(x.sup===code)n++;});
+  DB.items.forEach(function(x){if(x.mill===s.name)n++;});
+  return n;
+}
+function refsOfWh(code){
+  var n=0;
+  DB.ledger.forEach(function(x){if(x.wh===code)n++;});
+  DB.rolls.forEach(function(x){if(x.wh===code)n++;});
+  DB.reservations.forEach(function(x){if(x.wh===code)n++;});
+  return n;
+}
+function deleteMaster(type,code,name){
+  if(type==="wh"&&code===FULFILL_WH){toast("「"+FULFILL_WH_NAME+"」是目前設定的履約倉，銷售可承諾／保留／出貨都以它為準，不能刪除。");return false;}
+  var refFn={item:refsOfItem,cust:refsOfCust,sup:refsOfSup,wh:refsOfWh}[type];
+  var n=refFn(code);
+  if(n>0){toast("無法刪除「"+name+"」：還有 "+n+" 筆單據或庫存紀錄參照著它，刪除會讓那些紀錄找不到對應資料。");return false;}
+  var arr={item:"items",cust:"customers",sup:"suppliers",wh:"warehouses"}[type];
+  DB[arr]=DB[arr].filter(function(x){return x.code!==code;});
+  DB.rev++;
+  toast("已刪除「"+name+"」。");
+  return true;
+}
+function newDraft(type){
+  if(type==="item")return {code:"",name:"",grade:"",form:"平張",spec:"",mill:DB.suppliers[0].name,gsm:80,kg:1,price:0,safety:0};
+  if(type==="cust")return {code:"",name:"",contact:"",terms:"月結 30 天"};
+  if(type==="sup")return {code:"",name:"",days:7,terms:"月結 30 天"};
+  return {code:"",name:"",addr:""};
+}
+function commitNewMaster(type){
+  var d=S.mDraft; if(!d)return false;
+  var code=(d.code||"").trim();
+  if(!code){toast("請先填代號／料號。");return false;}
+  var arr={item:"items",cust:"customers",sup:"suppliers",wh:"warehouses"}[type];
+  if(DB[arr].some(function(x){return x.code===code;})){toast("代號「"+code+"」已經存在，換一個。");return false;}
+  if(!(d.name||"").trim()){toast("請填名稱。");return false;}
+  var rec;
+  if(type==="item"){
+    var kgVal=Math.max(0.01,parseFloat(d.kg)||1);
+    rec={code:code,name:d.name,grade:d.grade||"未分類",gsm:Math.max(0,parseFloat(d.gsm)||0),form:d.form||"平張",
+      spec:d.spec||"",mill:d.mill||DB.suppliers[0].name,uom:"令",kg:kgVal,
+      safety:Math.max(0,parseFloat(d.safety)||0),price:Math.max(0,parseFloat(d.price)||0),
+      uoms:[["令",1],["張",500],["公斤",kgVal]]};
+  }else if(type==="cust"){
+    rec={code:code,name:d.name,contact:d.contact||"",terms:d.terms||"月結 30 天",prices:{}};
+  }else if(type==="sup"){
+    var days=Math.max(0,parseFloat(d.days)||7);
+    rec={code:code,name:d.name,lead:days+" 天",days:days,terms:d.terms||"月結 30 天"};
+  }else{
+    rec={code:code,name:d.name,addr:d.addr||""};
+  }
+  DB[arr].push(rec);DB.rev++;
+  S.modal=null;S.mDraft=null;S.mDraftType=null;
+  if(type==="item")S.mIt=code;if(type==="cust")S.mCu=code;if(type==="sup")S.mSu=code;if(type==="wh")S.mWh=code;
+  toast("已新增「"+d.name+"」。");
+  return true;
+}
+function addCustPrice(custCode,itemCode,priceRaw){
+  var c=cust(custCode); if(!c||!itemCode)return;
+  if(!c.prices)c.prices={};
+  c.prices[itemCode]=Math.max(0,parseFloat(priceRaw)||0);
+  DB.rev++;
+}
+function delCustPrice(custCode,itemCode){
+  var c=cust(custCode); if(!c||!c.prices)return;
+  delete c.prices[itemCode];
+  DB.rev++;
+}
+function vMaster(){
+  var tabs='<div class="tabs" role="tablist">'+
+    [["item","紙品主檔"],["cust","客戶"],["sup","供應商"],["wh","倉別"]].map(function(t){
+      return '<button class="tab" role="tab" aria-selected="'+(S.masterTab===t[0])+'" data-act="mastertab" data-t="'+t[0]+'">'+t[1]+'</button>';
+    }).join("")+'</div>';
+  var body=S.masterTab==="item"?vMasterItems():S.masterTab==="cust"?vMasterCust():S.masterTab==="sup"?vMasterSup():vMasterWh();
+  return '<div class="phead"><div><div class="eyebrow">基礎資料</div><h1>主檔</h1></div>'+
+    '<div class="sub">交易前置資料：紙品與單位換算、客戶（含專屬價格）、供應商、倉別——這裡的每一筆資料都可以直接編輯。</div>'+
+    '<div style="flex-basis:100%;margin-top:2px">'+tabs+'</div></div>'+body;
+}
+function vMasterItems(){
+  var grades={},forms={};
+  DB.items.forEach(function(i){grades[i.grade]=1;forms[i.form]=1;});
+  var it=S.mIt?item(S.mIt):null;
+  var list='<div class="card"><h3>紙品主檔<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">'+n0(DB.items.length)+' 項</span>'+
+    '<button class="btn btn-sm btn-primary" data-act="opennewmaster" data-t="item">＋ 新增品項</button></h3>'+dataTable({
+    key:"im",rows:DB.items,placeholder:"搜尋料號、品名、紙種、規格",
+    search:function(i){return i.code+" "+i.name+" "+i.grade+" "+i.spec+" "+i.mill;},
+    filters:[
+      {k:"grade",label:"紙種",options:Object.keys(grades).slice(0,30),match:function(r,v){return r.grade===v;}},
+      {k:"form",label:"型態",options:Object.keys(forms),match:function(r,v){return r.form===v;}}
+    ],
+    cols:[
+      {k:"code",label:"料號",sort:function(r){return r.code;},cell:function(r){return '<span class="mono">'+r.code+'</span>';}},
+      {k:"name",label:"品名",sort:function(r){return r.name;},cell:function(r){return esc(r.name);}},
+      {k:"grade",label:"紙種",cell:function(r){return esc(r.grade);}},
+      {k:"gsm",label:"基重",r:true,sort:function(r){return r.gsm;},cell:function(r){return '<span class="num">'+r.gsm+' g</span>';}},
+      {k:"price",label:"牌價",r:true,sort:function(r){return r.price;},cell:function(r){return '<span class="num">'+money(r.price)+'</span>';}}
+    ],
+    onRow:function(r){return {act:"mit",no:r.code,selected:it&&it.code===r.code};}
+  })+'</div>';
+  if(!it)return '<div class="split">'+list+'<div class="card"><div class="pad dim">左側選一個品項來編輯，或按「＋ 新增品項」建立新品項。</div></div></div>';
+  function f(field,label,type,extra,opts){
+    var val=it[field],input;
+    if(type==="select")input='<select data-medit="item|'+it.code+'|'+field+'">'+opts.map(function(o){return '<option value="'+esc(o)+'"'+(val===o?' selected':'')+'>'+esc(o)+'</option>';}).join("")+'</select>';
+    else input='<input type="'+(type||"text")+'" data-medit="item|'+it.code+'|'+field+'" value="'+esc(val)+'"'+(extra||'')+'>';
+    return dt(label,input);
+  }
+  var refN=refsOfItem(it.code);
+  var detail='<div class="card"><h3>'+it.code+'　'+esc(it.name)+'<span class="sp"></span><button class="btn btn-sm" data-act="delmaster" data-t="item" data-no="'+it.code+'">刪除品項</button></h3>'+
+    '<div class="pad"><div class="dl">'+
+      dt("料號",'<b class="mono">'+it.code+'</b>')+
+      f("name","品名")+f("grade","紙種")+f("form","型態","select",null,["平張","捲筒"])+
+      f("gsm","基重（g）","number",' step="1" min="0"')+
+      f("spec","規格")+
+      f("mill","主要供應商","select",null,DB.suppliers.map(function(s){return s.name;}))+
+      f("kg","單位重量（公斤）","number",' step="0.01" min="0"')+
+      f("price","牌價","number",' step="1" min="0"')+
+      f("safety","安全存量","number",' step="1" min="0"')+
+      dt("單位換算",'<small class="mono">1 '+it.uoms[0][0]+' = '+it.uoms.slice(1).map(function(u){return q(u[1])+" "+u[0];}).join(" = ")+'</small>')+
+      (it.parent?dt("母源品項（裁切來源）",itemCell(it.parent)):'')+
+    '</div></div>'+
+    (refN>0?'<div class="hnote" style="border-top:none">目前有 '+refN+' 筆單據／庫存紀錄參照這個品項，暫時無法刪除。</div>':'')+
+    hypNote("單位換算表、是否為捲筒母源、裁切轉換關係屬於結構性資料，這裡不開放編輯；新增品項一律建立為平張／自訂商品，複雜的品項結構請洽系統管理。")+
+    '</div>';
+  return '<div class="split">'+list+detail+'</div>';
+}
+function vMasterCust(){
+  var c=S.mCu?cust(S.mCu):null;
+  var list='<div class="card"><h3>客戶<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">'+n0(DB.customers.length)+' 家</span>'+
+    '<button class="btn btn-sm btn-primary" data-act="opennewmaster" data-t="cust">＋ 新增客戶</button></h3>'+dataTable({
+    key:"cu",rows:DB.customers,placeholder:"搜尋客戶代號、名稱",
+    search:function(x){return x.code+" "+x.name+" "+x.contact;},
+    cols:[
+      {k:"code",label:"代號",sort:function(r){return r.code;},cell:function(r){return '<span class="mono">'+r.code+'</span>';}},
+      {k:"name",label:"名稱",sort:function(r){return r.name;},cell:function(r){return esc(r.name);}},
+      {k:"contact",label:"聯絡人",cell:function(r){return esc(r.contact);}},
+      {k:"terms",label:"付款條件",cell:function(r){return esc(r.terms);}}
+    ],
+    onRow:function(r){return {act:"mcu",no:r.code,selected:c&&c.code===r.code};}
+  })+'</div>';
+  if(!c)return '<div class="split">'+list+'<div class="card"><div class="pad dim">左側選一個客戶來編輯，或按「＋ 新增客戶」建立新客戶。</div></div></div>';
+  function f(field,label){return dt(label,'<input type="text" data-medit="cust|'+c.code+'|'+field+'" value="'+esc(c[field])+'">');}
+  var refN=refsOfCust(c.code);
+  var priceRows=Object.keys(c.prices||{}).map(function(k){
+    var itx=item(k); if(!itx)return '';
+    return '<tr><td>'+itemCell(k)+'</td><td class="r num dim">'+money(itx.price)+'</td>'+
+      '<td class="r num" style="color:var(--accent)"><b>'+money(c.prices[k])+'</b></td>'+
+      '<td class="r num">−'+n0(itx.price-c.prices[k])+'</td>'+
+      '<td class="r"><button class="btn btn-sm" data-act="delcustprice" data-cust="'+c.code+'" data-item="'+k+'">移除</button></td></tr>';
+  }).join("");
+  var pricedCodes={}; Object.keys(c.prices||{}).forEach(function(k){pricedCodes[k]=1;});
+  var itemOpts=DB.items.filter(function(x){return !pricedCodes[x.code];});
+  var addPriceRow=itemOpts.length?
+    '<div class="actbar"><select id="cp-item">'+itemOpts.map(function(x){return '<option value="'+x.code+'">'+esc(x.name)+'</option>';}).join("")+'</select>'+
+    '<input id="cp-price" type="number" min="0" step="1" placeholder="議定價" style="width:110px">'+
+    '<button class="btn btn-sm" data-act="addcustprice" data-cust="'+c.code+'">加入</button></div>':
+    '<div class="pad dim" style="font-size:12px">所有品項都已經設定過專屬價格。</div>';
+  var infoCard='<div class="card"><h3>'+c.code+'　'+esc(c.name)+'<span class="sp"></span><button class="btn btn-sm" data-act="delmaster" data-t="cust" data-no="'+c.code+'">刪除客戶</button></h3>'+
+    '<div class="pad"><div class="dl">'+dt("代號",'<b class="mono">'+c.code+'</b>')+f("name","名稱")+f("contact","聯絡人")+f("terms","付款條件")+'</div></div>'+
+    (refN>0?'<div class="hnote" style="border-top:none">目前有 '+refN+' 筆報價／訂單參照這個客戶，暫時無法刪除。</div>':'')+
+    '</div>';
+  var priceCard='<div class="card" style="margin-top:14px"><h3>客戶專屬價格 '+hyp("客戶議定價、階梯折扣、業務議價權限與核准層級，均待客戶確認。")+'</h3>'+
+    '<div class="tw"><table class="tbl"><thead><tr><th>紙品</th><th class="r">標準牌價</th><th class="r">客戶價</th><th class="r">價差</th><th></th></tr></thead><tbody>'+
+    (priceRows||'<tr><td colspan="5" class="dim" style="padding:16px">尚未設定客戶專屬價格。</td></tr>')+'</tbody></table></div>'+addPriceRow+'</div>';
+  return '<div class="split">'+list+'<div>'+infoCard+priceCard+'</div></div>';
+}
+function vMasterSup(){
+  var s=S.mSu?supp(S.mSu):null;
+  var list='<div class="card"><h3>供應商<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">'+n0(DB.suppliers.length)+' 家</span>'+
+    '<button class="btn btn-sm btn-primary" data-act="opennewmaster" data-t="sup">＋ 新增供應商</button></h3>'+dataTable({
+    key:"su",rows:DB.suppliers,placeholder:"搜尋供應商",
+    search:function(x){return x.code+" "+x.name;},
+    cols:[
+      {k:"code",label:"代號",sort:function(r){return r.code;},cell:function(r){return '<span class="mono">'+r.code+'</span>';}},
+      {k:"name",label:"名稱",sort:function(r){return r.name;},cell:function(r){return esc(r.name);}},
+      {k:"lead",label:"標準交期",sort:function(r){return r.days;},cell:function(r){return esc(r.lead);}},
+      {k:"terms",label:"付款條件",cell:function(r){return esc(r.terms);}}
+    ],
+    onRow:function(r){return {act:"msu",no:r.code,selected:s&&s.code===r.code};}
+  })+'</div>';
+  if(!s)return '<div class="split">'+list+'<div class="card"><div class="pad dim">左側選一個供應商來編輯，或按「＋ 新增供應商」建立新供應商。</div></div></div>';
+  function f(field,label,type,extra){return dt(label,'<input type="'+(type||"text")+'" data-medit="sup|'+s.code+'|'+field+'" value="'+esc(s[field])+'"'+(extra||'')+'>');}
+  var refN=refsOfSup(s.code);
+  var detail='<div class="card"><h3>'+s.code+'　'+esc(s.name)+'<span class="sp"></span><button class="btn btn-sm" data-act="delmaster" data-t="sup" data-no="'+s.code+'">刪除供應商</button></h3>'+
+    '<div class="pad"><div class="dl">'+dt("代號",'<b class="mono">'+s.code+'</b>')+f("name","名稱")+
+      f("days","標準交期（天）","number",' step="1" min="0"')+f("terms","付款條件")+
+      dt("交期顯示",'<span class="dim">'+esc(s.lead)+'</span>')+
+    '</div></div>'+
+    (refN>0?'<div class="hnote" style="border-top:none">目前有 '+refN+' 筆採購單或品項參照這個供應商，暫時無法刪除。</div>':'')+
+    '</div>';
+  return '<div class="split">'+list+detail+'</div>';
+}
+function vMasterWh(){
+  var w=S.mWh?idx().wh[S.mWh]:null;
+  var list='<div class="card"><h3>倉別<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">'+n0(DB.warehouses.length)+' 個</span>'+
+    '<button class="btn btn-sm btn-primary" data-act="opennewmaster" data-t="wh">＋ 新增倉別</button></h3>'+dataTable({
+    key:"wh",rows:DB.warehouses,placeholder:"搜尋倉別",
+    search:function(x){return x.code+" "+x.name;},
+    cols:[
+      {k:"code",label:"代號",sort:function(r){return r.code;},cell:function(r){return '<span class="mono">'+r.code+'</span>';}},
+      {k:"name",label:"名稱",sort:function(r){return r.name;},cell:function(r){return esc(r.name);}},
+      {k:"addr",label:"地址",cell:function(r){return '<small>'+esc(r.addr)+'</small>';}}
+    ],
+    onRow:function(r){return {act:"mwh",no:r.code,selected:w&&w.code===r.code};}
+  })+'</div>';
+  if(!w)return '<div class="split">'+list+'<div class="card"><div class="pad dim">左側選一個倉別來編輯，或按「＋ 新增倉別」建立新倉別。</div></div></div>';
+  function f(field,label){return dt(label,'<input type="text" data-medit="wh|'+w.code+'|'+field+'" value="'+esc(w[field])+'">');}
+  var refN=refsOfWh(w.code),isFulfill=w.code===FULFILL_WH;
+  var detail='<div class="card"><h3>'+w.code+'　'+esc(w.name)+'<span class="sp"></span><button class="btn btn-sm" data-act="delmaster" data-t="wh" data-no="'+w.code+'"'+(isFulfill?' disabled':'')+'>刪除倉別</button></h3>'+
+    '<div class="pad"><div class="dl">'+dt("代號",'<b class="mono">'+w.code+'</b>')+f("name","名稱")+f("addr","地址")+'</div></div>'+
+    (isFulfill?'<div class="hnote" style="border-top:none">這是目前設定的履約倉（'+FULFILL_WH_NAME+'），銷售可承諾／保留／出貨都以這個倉為準，不能刪除。</div>':
+      (refN>0?'<div class="hnote" style="border-top:none">目前有 '+refN+' 筆庫存或保留紀錄參照這個倉別，暫時無法刪除。</div>':''))+
+    '</div>';
+  return '<div class="split">'+list+detail+'</div>';
+}
+/* 新增主檔資料 Modal：品項／客戶／供應商／倉別共用同一個殼，欄位依 S.mDraftType 決定。 */
+function renderMasterCreateModal(){
+  if(S.modal!=="newmaster")return;
+  var type=S.mDraftType,d=S.mDraft; if(!d)return;
+  var titleMap={item:"新增品項",cust:"新增客戶",sup:"新增供應商",wh:"新增倉別"};
+  function fld(field,label,inputType,extra){
+    return '<div class="field"><label for="nm-'+field+'">'+label+'</label>'+
+      '<input id="nm-'+field+'" type="'+(inputType||"text")+'" data-nedit="'+field+'" value="'+esc(d[field]!==undefined?d[field]:"")+'"'+(extra||'')+'></div>';
+  }
+  function selFld(field,label,opts){
+    return '<div class="field"><label for="nm-'+field+'">'+label+'</label><select id="nm-'+field+'" data-nedit="'+field+'">'+
+      opts.map(function(o){return '<option value="'+esc(o)+'"'+(d[field]===o?' selected':'')+'>'+esc(o)+'</option>';}).join("")+'</select></div>';
+  }
+  var fields;
+  if(type==="item"){
+    fields=fld("code","料號")+fld("name","品名")+fld("grade","紙種")+selFld("form","型態",["平張","捲筒"])+fld("spec","規格")+
+      selFld("mill","主要供應商",DB.suppliers.map(function(s){return s.name;}))+
+      fld("gsm","基重（g）","number",' step="1" min="0"')+fld("kg","單位重量（公斤）","number",' step="0.01" min="0"')+
+      fld("price","牌價","number",' step="1" min="0"')+fld("safety","安全存量","number",' step="1" min="0"');
+  }else if(type==="cust"){
+    fields=fld("code","代號")+fld("name","名稱")+fld("contact","聯絡人")+fld("terms","付款條件");
+  }else if(type==="sup"){
+    fields=fld("code","代號")+fld("name","名稱")+fld("days","標準交期（天）","number",' step="1" min="0"')+fld("terms","付款條件");
+  }else{
+    fields=fld("code","代號")+fld("name","名稱")+fld("addr","地址");
+  }
+  var body='<div class="pad" style="display:grid;gap:12px">'+
+      '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">'+fields+'</div>'+
+      (type==="item"?'<div class="dim" style="font-size:12px">新增品項一律建立為平張／自訂商品，不含裁切母源關係；單位換算固定為「令／張／公斤」。</div>':'')+
+    '</div>'+
+    '<div class="actbar"><button class="btn btn-primary" data-act="mknewmaster">建立</button>'+
+      '<span class="note">代號／料號建立後不能再改；其他欄位之後都可以隨時在主檔頁面調整。</span></div>';
+  el("modal").innerHTML='<div class="sheet" role="dialog" aria-modal="true" aria-label="'+titleMap[type]+'">'+
+    '<header><h2>'+titleMap[type]+'</h2><div style="flex:1"></div><button class="btn btn-sm" data-act="closemodal">關閉</button></header>'+body+'</div>';
+}
+
+/* ---- 單據追溯 ---- */
+function openChain(soNo){
+  var so=findSO(soNo);
+  var inv=DB.invoices.filter(function(x){return x.so===soNo;})[0];
+  var dn=DB.dns.filter(function(x){return x.so===soNo;})[0];
+  var cvs=DB.convs.filter(function(x){return x.so===soNo;});
+  var pos=DB.pos.filter(function(x){return x.so===soNo;});
+  function node(cls,no,title,desc,view){
+    return '<div class="node '+cls+'"><div class="h"><b>'+no+'</b>'+title+
+      (view?'<span class="sp" style="flex:1"></span><button class="btn btn-sm" data-act="go" data-view="'+view+'" data-no="'+no+'">開啟</button>':'')+
+      '</div><div class="d">'+desc+'</div></div>';
+  }
+  var mid='';
+  so.lines.forEach(function(l){
+    var it=item(l.item);
+    if(l.conv){
+      var cv=findCV(l.conv);
+      mid+=node("k",cv.no,'<span class="bdg k">裁切工單</span>',
+        '投入 '+cv.inQty+' 捲（'+esc(cv.rolls.join("、"))+'）→ 產出 '+cv.outQty+' 令 '+it.name+'，剩料 '+n0(cv.remainKg)+' kg'+(cv.remainRoll?'（'+cv.remainRoll+'）':'')+'，損耗 '+n1(cv.scrapKg)+' kg，良率 '+n1(cv.yield)+'%',"conversion")+'<div class="link"></div>';
+    }
+    if(l.po){
+      var po=findPO(l.po);
+      mid+=node("i",po.no,'<span class="bdg i">採購單</span>',
+        supName(po.sup)+'　'+po.lines[0].qty+' '+it.uom+' '+it.name+'　'+(po.status==="已入庫"?"已驗收入庫":"待收貨"),"purchase")+'<div class="link"></div>';
+    }
+  });
+  var resv=DB.reservations.filter(function(r){return r.so===soNo;});
+  var qt=so.qt?findQT(so.qt):null;
+  var body='<div class="chain">'+
+    (qt?node("n",qt.no,'<span class="bdg n">報價單</span>',
+      custName(qt.cust)+'　報價日 '+qt.date+'　有效期至 '+qt.valid+'　合計 '+money(qt.lines.reduce(function(a,l){return a+l.qty*l.price;},0))+'（未稅）',"")+'<div class="link"></div>':'')+
+    node("a",so.no,'<span class="bdg a">銷售訂單</span>',custName(so.cust)+'　'+so.lines.length+' 個明細　交期 '+so.due,"sales")+
+    '<div class="link"></div>'+
+    '<div class="branch">'+
+      node("n","保留 "+resv.length+" 筆",'<span class="bdg n">庫存保留</span>',
+        resv.map(function(r){return item(r.item).name+' '+q(r.qty)+' '+item(r.item).uom+'（'+(r.status==="consumed"?"已出庫":"保留中")+'）';}).join("；")||"—","")+
+      '<div class="link"></div>'+mid+
+    '</div>'+
+    (dn?node("g",dn.no,'<span class="bdg g">出貨單</span>',dn.status+'　'+dn.lines.length+' 個明細　'+custName(dn.cust)+(dn.posted?'　庫存已過帳':'　庫存尚未過帳'),"delivery")+'<div class="link"></div>':'')+
+    (inv?node("g",inv.no,'<span class="bdg g">銷貨發票</span>','未稅 '+money(inv.sub)+'　稅額 '+money(inv.tax)+'　總計 <b>'+money(inv.total)+'</b>',"")
+        :node("n","發票",'<span class="bdg n">銷貨發票</span>',so.status==="已出貨"?'尚未開立 —— 可於銷售訂單頁按「建立銷貨發票」開立。':'尚未開立 —— 需先完成出貨。',""))+
+  '</div>';
+  var ledgerRows=DB.ledger.filter(function(l){
+    return l.ref===so.no||(dn&&l.ref===dn.no)||cvs.some(function(c){return c.ref===l.ref||c.no===l.ref;})||pos.some(function(p){return p.no===l.ref;});
+  });
+  var lg=ledgerRows.length?'<h3 style="font-size:13px;margin:18px 0 8px">這條單據鏈產生的庫存異動（'+ledgerRows.length+' 筆）</h3>'+
+    '<div class="tw"><table class="tbl" style="border:1px solid var(--line);border-radius:4px">'+
+    '<thead><tr><th>異動</th><th>事件</th><th>品項</th><th>倉別</th><th class="r">數量</th><th>來源</th></tr></thead><tbody>'+
+    ledgerRows.map(function(l){
+      return '<tr><td class="mono dim">'+l.id+'</td><td>'+l.event+'</td><td><span class="mono" style="font-size:12px">'+l.item+'</span></td>'+
+        '<td>'+whName(l.wh)+'</td><td class="r num" style="color:'+(l.qty>0?"var(--good)":"var(--crit)")+'">'+(l.qty>0?"+":"")+q(l.qty)+'</td>'+
+        '<td class="mono" style="font-size:12px">'+l.ref+'</td></tr>';
+    }).join("")+'</tbody></table></div>':'<p class="dim" style="margin-top:16px">此訂單尚未產生庫存異動。</p>';
+
+  el("modal").innerHTML='<div class="sheet" role="dialog" aria-modal="true" aria-label="單據追溯">'+
+    '<header><h2>單據追溯　'+so.no+'</h2><div style="flex:1"></div><button class="btn btn-sm" data-act="closemodal">關閉</button></header>'+
+    '<div class="pad">'+body+lg+'</div></div>';
+  el("modal").hidden=false;
+}
+
+/* ====================== 繪製 ====================== */
+var VIEWS={dash:vDash,sales:vSales,purchase:vPurchase,inventory:vInventory,conversion:vConversion,delivery:vDelivery,master:vMaster};
+function counts(v){
+  var n=0;
+  if(v==="sales")n=DB.quotes.filter(function(x){return !x.so;}).length+DB.sos.filter(function(s){return s.status!=="已出貨"&&s.status!=="已結案";}).length;
+  else if(v==="purchase")n=DB.pos.filter(function(p){return p.status!=="已入庫";}).length+shortageList().filter(function(r){return r.gap>0;}).length;
+  else if(v==="conversion")n=DB.convs.filter(function(c){return c.status!=="已完成";}).length;
+  else if(v==="delivery")n=DB.dns.filter(function(x){return x.status!=="已送達";}).length;
+  return n?n0(n):"";
+}
+function render(){
+  el("today").textContent=d(0);
+  el("rail").innerHTML=NAV.map(function(n){
+    return '<button class="navitem" data-act="nav" data-view="'+n[0]+'" aria-current="'+(S.view===n[0])+'">'+
+      '<span class="g">'+n[2]+'</span>'+n[1]+'<span class="cnt">'+counts(n[0])+'</span></button>';
+  }).join("")+'<hr><div class="foot">示範資料：本畫面所有數字均為虛構示範資料，非勝芳實際營運數字。</div>';
+  el("main").innerHTML=VIEWS[S.view]();
+  if(S.modal==="createqt")renderCreateQuoteModal();
+  if(S.modal==="createpo")renderCreatePOModal();
+  if(S.modal==="newmaster")renderMasterCreateModal();
+  if(el("qcalc"))updateQuoteCalc();
+  var ds=el("dsmode"); if(ds)ds.value=LARGE_DATASET_MODE?"big":"std";
+  /* 表格搜尋框重繪後把游標接回去，打字不會中斷 */
+  if(S.focusSel){
+    var f=document.querySelector(S.focusSel);
+    if(f){f.focus();try{var v=f.value;f.value="";f.value=v;}catch(e){}}
+    S.focusSel=null;
+  }else window.scrollTo({top:0,behavior:"instant"});
+}
+var toastTimer=null;
+function toast(msg,ledgerLink){
+  var t=el("toast");
+  t.innerHTML='<span>'+esc(msg)+'</span>'+(ledgerLink?'<button data-act="goledger">查看總帳</button>':'')+
+    '<button data-act="closetoast" aria-label="關閉">✕</button>';
+  t.hidden=false;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){t.hidden=true;},ledgerLink?9000:5000);
+}
+
+/* ====================== 事件 ====================== */
+document.addEventListener("click",function(e){
+  var b=e.target.closest("[data-act]"); if(!b)return;
+  var a=b.dataset.act,no=b.dataset.no;
+  if(a==="nav"){S.view=b.dataset.view;render();return;}
+  if(a==="go"){
+    S.view=b.dataset.view;
+    if(no){
+      if(S.view==="sales"){
+        if(b.dataset.tab==="qt"||no.indexOf("QT-")===0){S.salesTab="qt";S.qt=no;}
+        else {S.salesTab="so";S.so=no;}
+      }
+      if(S.view==="purchase")S.po=no;if(S.view==="conversion")S.cv=no;if(S.view==="delivery")S.dn=no;
+    }
+    S.modal=null;el("modal").hidden=true;render();return;
+  }
+  if(a==="dashgo"){
+    S.modal=null;
+    S.view=b.dataset.view;
+    if(b.dataset.tab){if(S.view==="sales")S.salesTab=b.dataset.tab;if(S.view==="inventory")S.invTab=b.dataset.tab;if(S.view==="purchase")S.purchaseTab=b.dataset.tab;}
+    if(no){if(S.view==="sales")S.so=no;if(S.view==="purchase")S.po=no;if(S.view==="conversion")S.cv=no;if(S.view==="delivery")S.dn=no;}
+    var tk=b.dataset.tblkey;
+    if(tk){
+      var st=tbl(tk);st.page=1;
+      if(b.dataset.filters){var fl=JSON.parse(b.dataset.filters);for(var k in fl)if(fl.hasOwnProperty(k))st.f[k]=fl[k];}
+      if(b.dataset.q!==undefined)st.q=b.dataset.q;
+    }
+    el("modal").hidden=true;render();return;
+  }
+  if(a==="salestab"){S.salesTab=b.dataset.t;render();return;}
+  if(a==="qtdtab"){S.qtDetailTab=b.dataset.t;render();return;}
+  if(a==="qt"){S.qt=no;render();return;}
+  if(a==="so"){S.so=no;render();return;}
+  if(a==="po"){S.po=no;render();return;}
+  if(a==="cv"){S.cv=no;render();return;}
+  if(a==="dn"){S.dn=no;render();return;}
+  if(a==="invtab"){S.invTab=b.dataset.t;render();return;}
+  if(a==="purtab"){S.purchaseTab=b.dataset.t;render();return;}
+  if(a==="opencreatepo"){S.poDraft=defaultPODraft(DB.items[0].code);S.modal="createpo";render();el("modal").hidden=false;return;}
+  if(a==="openpofromshort"){S.poDraft=defaultPODraft(b.dataset.item,parseFloat(b.dataset.qty)||0);S.modal="createpo";render();el("modal").hidden=false;return;}
+  if(a==="mkpo"){createManualPO();el("modal").hidden=true;render();return;}
+  if(a==="mastertab"){S.masterTab=b.dataset.t;render();return;}
+  if(a==="mit"){S.mIt=no;render();return;}
+  if(a==="mcu"){S.mCu=no;render();return;}
+  if(a==="msu"){S.mSu=no;render();return;}
+  if(a==="mwh"){S.mWh=no;render();return;}
+  if(a==="opennewmaster"){var mtOpen=b.dataset.t;S.mDraft=newDraft(mtOpen);S.mDraftType=mtOpen;S.modal="newmaster";render();el("modal").hidden=false;return;}
+  if(a==="mknewmaster"){if(commitNewMaster(S.mDraftType))el("modal").hidden=true;render();return;}
+  if(a==="delmaster"){
+    var mtDel=b.dataset.t,codeDel=no;
+    var recDel=mtDel==="item"?item(codeDel):mtDel==="cust"?cust(codeDel):mtDel==="sup"?supp(codeDel):idx().wh[codeDel];
+    if(deleteMaster(mtDel,codeDel,recDel?recDel.name:codeDel)){
+      if(mtDel==="item"&&S.mIt===codeDel)S.mIt=null;
+      if(mtDel==="cust"&&S.mCu===codeDel)S.mCu=null;
+      if(mtDel==="sup"&&S.mSu===codeDel)S.mSu=null;
+      if(mtDel==="wh"&&S.mWh===codeDel)S.mWh=null;
+    }
+    render();return;
+  }
+  if(a==="addcustprice"){
+    var cpIt=el("cp-item"),cpPr=el("cp-price");
+    if(cpIt&&cpPr)addCustPrice(b.dataset.cust,cpIt.value,cpPr.value);
+    render();return;
+  }
+  if(a==="delcustprice"){delCustPrice(b.dataset.cust,b.dataset.item);render();return;}
+  if(a==="addline"){
+    S.draft.cust=el("f-cust").value;S.draft.due=el("f-due").value||S.draft.due;
+    var okAdd=addDraftLine(el("f-item").value,parseFloat(el("f-qty").value)||0,el("f-uom").value);
+    if(!okAdd)toast("請先輸入大於 0 的數量。");
+    render();return;
+  }
+  if(a==="delline"){S.draft.lines.splice(+b.dataset.i,1);render();return;}
+  if(a==="prefill"){
+    S.draft.cust="C-101";S.draft.due=d(4);S.draft.lines=[];
+    addDraftLine("SH-DL80-787",120,"令");addDraftLine("SH-ART157-788",60,"令");addDraftLine("RL-KR120-1200",8,"捲");
+    render();toast("已帶入宏泰印刷的三個示範品項，可直接產生報價單，也可以自行增減。");return;
+  }
+  if(a==="opencreateqt"){S.editingQt=null;S.draft={cust:S.draft.cust||"C-101",due:d(4),lines:[]};S.modal="createqt";render();el("modal").hidden=false;return;}
+  if(a==="editqt"){editQuote(no);render();el("modal").hidden=false;return;}
+  if(a==="dupqt"){duplicateQuote(no);render();return;}
+  if(a==="voidqt"){voidQuote(no);render();return;}
+  if(a==="toggleexp"){S.expand[b.dataset.key]=!S.expand[b.dataset.key];render();return;}
+  if(a==="mkquote"){saveQuoteDraft();S.modal=null;el("modal").hidden=true;render();return;}
+  if(a==="convq"){convertQuote(no);render();return;}
+  if(a==="postcount"){S.flash=[];S.reason=el("f-reason").value;postCount();render();return;}
+  if(a==="recplan"){recommendSO(no);S.planEdit=null;render();return;}
+  if(a==="recplanmanual"){recommendSO(no);S.planEdit=no;render();return;}
+  if(a==="confirmplan"){S.flash=[];confirmSO(no);S.planEdit=null;render();return;}
+  if(a==="cancelplan"){cancelPlan(no);S.planEdit=null;render();return;}
+  if(a==="toggleplanedit"){S.planEdit=S.planEdit===no?null:no;render();return;}
+  if(a==="mkinv"){createInvoice(no);S.view="sales";S.salesTab="so";S.so=no;render();return;}
+  if(a==="runcv"){S.flash=[];runConversion(no);S.cv=no;render();return;}
+  if(a==="recv"){S.flash=[];receivePO(no);S.po=no;render();return;}
+  if(a==="mkdn"){var newdn=createDN(no);S.dn=newdn.no;toast("出貨單 "+newdn.no+" 已建立，狀態：待揀貨。要開始處理可按下方「查看出貨單」。");render();return;}
+  if(a==="advdn"){S.flash=[];advanceDN(no);S.dn=no;render();return;}
+  if(a==="chain"){S.modal=null;openChain(no);return;}
+  if(a==="closemodal"){el("modal").hidden=true;S.modal=null;return;}
+  if(a==="closetoast"){el("toast").hidden=true;return;}
+  if(a==="goledger"){S.view="inventory";S.invTab="ledger";el("toast").hidden=true;render();return;}
+  if(a==="theme"){
+    var r=document.documentElement;
+    var dark=r.getAttribute("data-theme")==="dark"||(!r.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);
+    r.setAttribute("data-theme",dark?"light":"dark");return;
+  }
+  if(a==="reset"){DB=buildDB();S=initState();el("modal").hidden=true;el("toast").hidden=true;render();return;}
+});
+/* 表格互動：搜尋、篩選、排序、翻頁、每頁筆數 */
+document.addEventListener("click",function(e){
+  var th=e.target.closest("[data-ts]"),pb=e.target.closest("[data-tp]");
+  if(th){
+    var ps=th.dataset.ts.split("|"),st=tbl(ps[0]);
+    if(st.sort===ps[1])st.dir=st.dir==="asc"?"desc":"asc";
+    else {st.sort=ps[1];st.dir="asc";}
+    render();return;
+  }
+  if(pb&&!pb.disabled){
+    var pp=pb.dataset.tp.split("|"),s2=tbl(pp[0]);
+    s2.page=Math.max(1,parseInt(pp[1],10)||1);
+    render();return;
+  }
+});
+/* 表單即時反應：只重算試算區塊，不重繪整頁 */
+function onFormChange(e){
+  var t=e.target;
+  /* 表格工具列 */
+  if(t.hasAttribute&&t.hasAttribute("data-tq")){
+    var st=tbl(t.dataset.tq);st.q=t.value;st.page=1;
+    S.focusSel='[data-tq="'+t.dataset.tq+'"]';
+    render();return;
+  }
+  if(t.hasAttribute&&t.hasAttribute("data-tf")){
+    var fp=t.dataset.tf.split("|"),s2=tbl(fp[0]);
+    s2.f[fp[1]]=t.value;s2.page=1;render();return;
+  }
+  if(t.hasAttribute&&t.hasAttribute("data-tz")){
+    var s3=tbl(t.dataset.tz);s3.size=parseInt(t.value,10)||DEFAULT_PAGE_SIZE;s3.page=1;render();return;
+  }
+  /* 供應建議手動調整：現貨／裁切／採購三個數量欄位改了之後，即時重算承諾日期與履約狀態。
+     只在 change（欄位失焦或按 Enter）才處理，避免每打一個字就整頁重繪，把小數點打斷。 */
+  if(e.type==="change"&&t.hasAttribute&&t.hasAttribute("data-planqty")){
+    var pq=t.dataset.planqty.split("|");
+    if(applyPlanEdit(pq[0],parseInt(pq[1],10),pq[2],t.value)){
+      S.focusSel='[data-planqty="'+t.dataset.planqty+'"]';
+      render();return;
+    }
+  }
+  /* 主檔明細編輯：跟供應建議手動調整一樣，只在 change 才處理，避免每打一個字整頁重繪。 */
+  if(e.type==="change"&&t.hasAttribute&&t.hasAttribute("data-medit")){
+    var mp=t.dataset.medit.split("|");
+    applyMasterEdit(mp[0],mp[1],mp[2],t.value);
+    S.focusSel='[data-medit="'+t.dataset.medit+'"]';
+    render();return;
+  }
+  /* 新增主檔資料 Modal 的草稿欄位：純粹先存到 S.mDraft，按「建立」才真正寫入 DB，
+     不需要重繪（沒有任何欄位會因為別的欄位改變而跟著變），也就不會有打字被打斷的問題。 */
+  if(t.hasAttribute&&t.hasAttribute("data-nedit")){
+    if(S.mDraft)S.mDraft[t.dataset.nedit]=t.value;
+    return;
+  }
+  if(t.id==="dsmode"){
+    LARGE_DATASET_MODE=(t.value==="big");
+    DB=buildDB();S=initState();
+    toast(LARGE_DATASET_MODE
+      ?"已切換為大量資料模式："+n0(DB.items.length)+" 個品項、"+n0(DB.customers.length)+" 家客戶、"+n0(DB.sos.length)+" 張銷售單、"+n0(DB.ledger.length)+" 筆庫存異動。表格一律以搜尋、篩選、排序與分頁取用。"
+      :"已切回標準示範資料。");
+    render();return;
+  }
+  if(!t.id&&!t.dataset.cnt)return;
+  if(t.id==="f-item"){
+    var it=item(t.value),sel=el("f-uom");
+    sel.innerHTML=it.uoms.map(function(u){return '<option value="'+u[0]+'">'+u[0]+'</option>';}).join("");
+    updateQuoteCalc();return;
+  }
+  if(t.id==="f-cust"){
+    S.draft.cust=t.value;
+    S.draft.lines.forEach(function(l){var p=priceFor(t.value,l.item);l.price=p.price;l.list=p.list;l.custom=p.custom;});
+    if(S.draft.lines.length){render();return;}
+    updateQuoteCalc();return;
+  }
+  if(t.id==="f-qty"||t.id==="f-uom"){updateQuoteCalc();return;}
+  if(t.id==="f-due"){S.draft.due=t.value;return;}
+  if(t.id==="f-reason"){S.reason=t.value;return;}
+  if(t.id==="f-qtnote"){var qtN=findQT(S.qt);if(qtN){qtN.note=t.value;DB.rev++;}return;}
+  /* 新增採購單 Modal：換品項時保留使用者已輸入的數量，只重新帶入該品項的預設供應商／單價／交期；
+     換供應商時只重算交期。數量／單價／到貨日只在 change（失焦或 Enter）才處理，理由跟供應建議
+     手動調整欄位一樣：避免每打一個字就整頁重繪，把小數點或日期輸入打斷。 */
+  if(t.id==="pf-item"){S.poDraft=defaultPODraft(t.value,S.poDraft?S.poDraft.qty:undefined);render();return;}
+  if(t.id==="pf-sup"){
+    if(S.poDraft){var spx=supp(t.value);S.poDraft.sup=t.value;S.poDraft.eta=d(spx?spx.days:7);}
+    render();return;
+  }
+  if(e.type==="change"&&(t.id==="pf-qty"||t.id==="pf-cost"||t.id==="pf-eta")){
+    if(S.poDraft){
+      if(t.id==="pf-qty")S.poDraft.qty=Math.max(0,parseFloat(t.value)||0);
+      if(t.id==="pf-cost")S.poDraft.cost=Math.max(0,parseFloat(t.value)||0);
+      if(t.id==="pf-eta")S.poDraft.eta=t.value||S.poDraft.eta;
+    }
+    render();return;
+  }
+  if(t.dataset.cnt){
+    var k=t.dataset.cnt;S.count[k]=t.value;
+    var parts=k.split("|"),book=onHand(parts[0],parts[1]);
+    var diff=Math.round(((parseFloat(t.value)||0)-book)*1000)/1000;
+    var cell=el("diff-"+parts[0]+"-"+parts[1]);
+    if(cell){cell.textContent=(diff>0?"+":"")+q(diff);
+      cell.style.color=diff?(diff>0?"var(--good)":"var(--crit)"):"var(--ink-3)";}
+  }
+}
+document.addEventListener("input",onFormChange);
+document.addEventListener("change",onFormChange);
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"){el("modal").hidden=true;S.modal=null;el("toast").hidden=true;}
+});
+el("modal").addEventListener("click",function(e){if(e.target===el("modal")){el("modal").hidden=true;S.modal=null;}});
+render();
+</script>
