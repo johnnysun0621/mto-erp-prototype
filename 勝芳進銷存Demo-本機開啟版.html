@@ -164,6 +164,7 @@ button.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;pos
 .ai-msg.q{align-self:flex-end;background:var(--accent-soft);color:var(--accent-ink)}
 .ai-msg.a{align-self:flex-start;background:var(--surface-2);color:var(--ink)}
 .ai-msg.a button{display:block}
+.ai-src{margin-top:5px;font-size:11px;color:var(--ink-3);border-top:1px dashed var(--line-strong);padding-top:5px}
 .tbl tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .tbl .r{text-align:right}
 .tbl .flash{animation:flash 1.6s ease-out}
@@ -2321,6 +2322,9 @@ function renderMasterCreateModal(){
    規格：可展示「查訂單／查 KPI／追料源」的未來方向；避免承諾 AI 自動建單與執行流程。
    所以這裡故意不接真正的語言模型，只用關鍵字／單號比對去查「已經存在的真實資料」再回答，
    絕對不會寫入或修改任何單據——保留字面上的「唯讀」邊界，不讓展示效果過度承諾。 */
+/* 每個回答都附一個 source：具體單號就直接引用那張單據；彙總類的回答則講清楚
+   是從哪些資料表、用什麼條件算出來的。這是唯讀查詢示範跟「亂編答案」的界線——
+   答案一定要能回頭指到真實資料，指不出來就不該回答。 */
 function aiAnswer(raw){
   var s=(raw||"").trim();
   if(!s)return {text:"請輸入問題，或點下面的範例快速試試看。"};
@@ -2331,67 +2335,78 @@ function aiAnswer(raw){
     if(kind==="SO"){var so=findSO(no); if(so){
       var fs=fulfillmentStatusOf(so);
       return {text:no+"（"+custName(so.cust)+"）訂單狀態「"+so.status+"」，履約狀態「"+fs.label+"」，要求交期 "+so.due+"。",
+        source:"銷售訂單 "+no+"（DB.sos）",
         cta:{label:"查看訂單明細",view:"sales",tab:"so",no:no}};
     }}
     if(kind==="QT"){var qt=findQT(no); if(qt){
       return {text:no+"（"+custName(qt.cust)+"）狀態「"+qt.status+"」"+(qt.so?"，已轉銷售單 "+qt.so:"，尚未轉單")+"。",
+        source:"報價單 "+no+"（DB.quotes）",
         cta:{label:"查看報價明細",view:"sales",tab:"qt",no:no}};
     }}
     if(kind==="PO"){var po=findPO(no); if(po){
       return {text:no+"（"+supName(po.sup)+"）狀態「"+po.status+"」，預計到貨 "+po.eta+"。",
+        source:"採購單 "+no+"（DB.pos）",
         cta:{label:"查看採購明細",view:"purchase",no:no}};
     }}
     if(kind==="CV"){var cv=findCV(no); if(cv){
       return {text:no+" 裁切工單狀態「"+cv.status+"」，投入 "+cv.inQty+" 捲、產出 "+cv.outQty+" 令。",
+        source:"裁切工單 "+no+"（DB.convs）",
         cta:{label:"查看裁切明細",view:"conversion",no:no}};
     }}
     if(kind==="DN"){var dn=findDN(no); if(dn){
-      return {text:no+" 出貨單狀態「"+dn.status+"」。",cta:{label:"查看出貨明細",view:"delivery",no:no}};
+      return {text:no+" 出貨單狀態「"+dn.status+"」。",source:"出貨單 "+no+"（DB.dns）",
+        cta:{label:"查看出貨明細",view:"delivery",no:no}};
     }}
-    return {text:"查無單號 "+no+"，確認一下編號是否正確。"};
+    return {text:"查無單號 "+no+"，確認一下編號是否正確。",source:"已比對全部單據仍查無此編號"};
   }
   /* ② 缺料清單（多筆彙總，跟採購管理的「缺料建議」同一份資料） */
   if(/缺什麼|缺料|需要採購|要買什麼|還缺/.test(s)){
     var shortRows=shortageList().filter(function(r){return r.gap>0;});
-    if(!shortRows.length)return {text:"目前沒有尚待處理的缺料缺口。",cta:{label:"查看缺料建議",view:"purchase",tab:"shortage"}};
+    if(!shortRows.length)return {text:"目前沒有尚待處理的缺料缺口。",source:"缺料建議（尚未確認供應方案的訂單需求，扣掉可用庫存與在途採購）",cta:{label:"查看缺料建議",view:"purchase",tab:"shortage"}};
     return {text:"目前有 "+shortRows.length+" 個品項有缺口，缺最多的前幾名："+shortRows.slice(0,3).map(function(r){
         var it=item(r.item);return it.name+" 缺 "+q(r.gap)+" "+it.uom;}).join("、")+"。",
+      source:"缺料建議，共比對 "+shortRows.length+" 個品項的訂單需求／可用庫存／在途採購",
       cta:{label:"查看缺料建議",view:"purchase",tab:"shortage"}};
   }
   /* ③ 低庫存／缺貨清單（多筆彙總） */
   if(/低庫存|庫存偏低|快缺貨|哪些.*(低|缺貨)/.test(s)){
     var lowRows=DB.items.filter(function(it){var av=available(it.code);return av>0&&av<it.safety;});
     var outRows=DB.items.filter(function(it){return available(it.code)<=0;});
-    if(!lowRows.length&&!outRows.length)return {text:"目前所有品項庫存都在安全水位以上。",cta:{label:"查看庫存",view:"inventory",tab:"stock"}};
+    if(!lowRows.length&&!outRows.length)return {text:"目前所有品項庫存都在安全水位以上。",source:"庫存總帳（可用量 vs 各品項安全存量，共 "+DB.items.length+" 項）",cta:{label:"查看庫存",view:"inventory",tab:"stock"}};
     return {text:"低庫存 "+lowRows.length+" 項、缺貨 "+outRows.length+" 項："+outRows.concat(lowRows).slice(0,4).map(function(it){return it.name;}).join("、")+"。",
+      source:"庫存總帳（可用量 vs 各品項安全存量，共 "+DB.items.length+" 項）",
       cta:{label:"查看庫存",view:"inventory",tab:"stock"}};
   }
   /* ④ 今日應交訂單清單 */
   if(/今[天日].*交|應交.*今[天日]|哪些.*要交/.test(s)){
     var dueTodayList=DB.sos.filter(function(x){return x.status!=="已出貨"&&x.status!=="已結案"&&x.due===d(0);});
-    if(!dueTodayList.length)return {text:"今天沒有應交但尚未出貨的訂單。",cta:{label:"查看銷售管理",view:"sales",tab:"so"}};
+    if(!dueTodayList.length)return {text:"今天沒有應交但尚未出貨的訂單。",source:"銷售訂單（要求交期＝今日 "+d(0)+"，共 "+DB.sos.length+" 張比對）",cta:{label:"查看銷售管理",view:"sales",tab:"so"}};
     return {text:"今天應交的訂單有 "+dueTodayList.length+" 張："+dueTodayList.map(function(x){return x.no+"（"+custName(x.cust)+"）";}).join("、")+"。",
+      source:"銷售訂單（要求交期＝今日 "+d(0)+"，"+dueTodayList.map(function(x){return x.no;}).join("、")+"）",
       cta:{label:"查看銷售管理",view:"sales",tab:"so"}};
   }
   /* ⑤ 逾期採購清單 */
   if(/逾期/.test(s)&&/採購/.test(s)){
     var lateList=DB.pos.filter(function(p){return p.status!=="已入庫"&&p.eta<d(0);});
-    if(!lateList.length)return {text:"目前沒有逾期未到貨的採購單。",cta:{label:"查看採購管理",view:"purchase"}};
+    if(!lateList.length)return {text:"目前沒有逾期未到貨的採購單。",source:"採購單（預計到貨 < 今日 "+d(0)+"，共 "+DB.pos.length+" 張比對）",cta:{label:"查看採購管理",view:"purchase"}};
     return {text:"逾期採購單 "+lateList.length+" 張："+lateList.map(function(p){return p.no+"（"+supName(p.sup)+"）";}).join("、")+"。",
+      source:"採購單（預計到貨 < 今日 "+d(0)+"，"+lateList.map(function(p){return p.no;}).join("、")+"）",
       cta:{label:"查看採購管理",view:"purchase"}};
   }
   /* ⑥ 裁切進行中清單 */
   if(/裁切.*(進行|工單|加工)|加工中/.test(s)){
     var wipList=DB.convs.filter(function(c){return c.status!=="已完成";});
-    if(!wipList.length)return {text:"目前沒有進行中的裁切工單。",cta:{label:"查看裁切管理",view:"conversion"}};
+    if(!wipList.length)return {text:"目前沒有進行中的裁切工單。",source:"裁切工單（狀態≠已完成，共 "+DB.convs.length+" 張比對）",cta:{label:"查看裁切管理",view:"conversion"}};
     return {text:"進行中的裁切工單 "+wipList.length+" 張："+wipList.map(function(c){return c.no;}).join("、")+"。",
+      source:"裁切工單（狀態≠已完成，"+wipList.map(function(c){return c.no;}).join("、")+"）",
       cta:{label:"查看裁切管理",view:"conversion"}};
   }
   /* ⑦ 出貨進度清單 */
   if(/出貨.*(進度|還沒|尚未)|還沒出貨|尚未出貨|今[天日].*出貨/.test(s)){
     var openDNs=DB.dns.filter(function(x){return x.status!=="已送達";});
-    if(!openDNs.length)return {text:"目前沒有尚未送達的出貨單。",cta:{label:"查看出貨管理",view:"delivery"}};
+    if(!openDNs.length)return {text:"目前沒有尚未送達的出貨單。",source:"出貨單（狀態≠已送達，共 "+DB.dns.length+" 張比對）",cta:{label:"查看出貨管理",view:"delivery"}};
     return {text:"尚未送達的出貨單 "+openDNs.length+" 張："+openDNs.map(function(x){return x.no+"（"+x.status+"）";}).join("、")+"。",
+      source:"出貨單（狀態≠已送達，"+openDNs.map(function(x){return x.no;}).join("、")+"）",
       cta:{label:"查看出貨管理",view:"delivery"}};
   }
   /* ⑧ 客戶查詢：客戶名稱／代號 + 訂單／報價／專屬價關鍵字 */
@@ -2399,13 +2414,15 @@ function aiAnswer(raw){
   if(custHit&&/訂單|報價|往來|專屬價|價格/.test(s)){
     if(/專屬價|價格/.test(s)){
       var cpKeys=Object.keys(custHit.prices||{});
-      if(!cpKeys.length)return {text:custHit.name+" 目前沒有設定客戶專屬價格，適用標準牌價。",cta:{label:"查看客戶主檔",view:"master",tab:"cust"}};
+      if(!cpKeys.length)return {text:custHit.name+" 目前沒有設定客戶專屬價格，適用標準牌價。",source:"客戶主檔 "+custHit.code+"（"+custHit.name+"）",cta:{label:"查看客戶主檔",view:"master",tab:"cust"}};
       return {text:custHit.name+" 設定了 "+cpKeys.length+" 項專屬價格："+cpKeys.map(function(k){var it=item(k);return it?it.name+" "+money(custHit.prices[k]):k;}).join("、")+"。",
+        source:"客戶主檔 "+custHit.code+"（"+custHit.name+"）的專屬價格設定",
         cta:{label:"查看客戶主檔",view:"master",tab:"cust"}};
     }
     var custQts=DB.quotes.filter(function(x){return x.cust===custHit.code&&x.status!=="已失效";});
     var custSos=DB.sos.filter(function(x){return x.cust===custHit.code&&x.status!=="已出貨"&&x.status!=="已結案";});
     return {text:custHit.name+" 目前有 "+custQts.length+" 張未失效報價、"+custSos.length+" 張未完成銷售訂單。",
+      source:"客戶主檔 "+custHit.code+"　＋報價單／銷售訂單（依客戶代號比對）",
       cta:{label:"查看銷售管理",view:"sales",tab:"so"}};
   }
   /* ⑨ 供應商查詢：供應商名稱／代號 + 交期／採購關鍵字 */
@@ -2413,6 +2430,7 @@ function aiAnswer(raw){
   if(supHit&&/交期|採購|訂單|往來/.test(s)){
     var supPOs=DB.pos.filter(function(p){return p.sup===supHit.code&&p.status!=="已入庫";});
     return {text:supHit.name+" 標準交期 "+supHit.lead+"，付款條件「"+supHit.terms+"」，目前有 "+supPOs.length+" 張未入庫採購單。",
+      source:"供應商主檔 "+supHit.code+"　＋採購單（依供應商代號比對）",
       cta:{label:"查看採購管理",view:"purchase"}};
   }
   /* ⑩ 查總覽 KPI（籠統問法的兜底彙總，放在具體清單類問法之後，避免「逾期」這種字被這裡先搶走） */
@@ -2420,6 +2438,7 @@ function aiAnswer(raw){
     var mm=dashboardMetrics();
     return {text:"目前總覽：待履約訂單 "+mm.kpi.openSO+" 張、今日應交 "+mm.kpi.dueToday+" 張、低於安全存量 "+mm.kpi.belowSafety+
         " 項、待到貨採購 "+mm.kpi.openPO+" 張、缺料未下單 "+mm.kpi.shortage+" 項、待加工 "+mm.kpi.wip+" 張、未完成配送 "+mm.kpi.openDN+" 車。",
+      source:"總覽頁 dashboardMetrics()，即時彙總銷售訂單／採購單／裁切工單／出貨單／庫存總帳",
       cta:{label:"查看總覽",view:"dash"}};
   }
   /* ⑪⑫ 查品項庫存／追料源：先比對問句裡有沒有提到品項料號或全名；
@@ -2436,11 +2455,13 @@ function aiAnswer(raw){
     var rollsIt=DB.rolls.filter(function(r){return r.item===itHit.code&&r.status==="在庫";});
     return {text:itHit.name+" 目前在庫捲別／批次 "+rollsIt.length+" 筆"+(openPOsIt.length?"，另有 "+openPOsIt.length+" 張採購單在途":"")+
         "。示範資料目前只追蹤到捲別編號，還沒有供應商批號欄位，正式功能待需求確認。",
+      source:"品項主檔 "+itHit.code+"　＋捲別明細（DB.rolls）"+(openPOsIt.length?"＋在途採購單":""),
       cta:{label:"查看捲別明細",view:"inventory",tab:"roll"}};
   }
   if(itHit&&/庫存|可用|缺|剩多少/.test(s)){
     var av=Math.max(0,available(itHit.code,FULFILL_WH)),oh=onHand(itHit.code,FULFILL_WH),inc=incoming(itHit.code);
     return {text:itHit.name+"（履約倉）現有 "+q(oh)+" "+itHit.uom+"，扣掉已保留後可用 "+q(av)+" "+itHit.uom+"，在途 "+q(inc)+" "+itHit.uom+"。",
+      source:"庫存總帳（品項 "+itHit.code+"，履約倉 "+FULFILL_WH_NAME+"）",
       cta:{label:"查看庫存明細",view:"inventory",tab:"stock"}};
   }
   return {text:"這個示範入口目前支援幾種方向：查單號（例如 SO-2609-018）、查總覽 KPI、缺料／低庫存清單、今日應交／逾期採購、裁切與出貨進度、客戶或供應商往來、品項庫存與追料源。其他問法還沒支援——正式上線會串接真正的語言模型去理解更多問法，這裡先展示方向，不做完整 Agent。"};
@@ -2450,7 +2471,7 @@ function askAI(){
   var q=box.value.trim(); if(!q)return;
   var ans=aiAnswer(q);
   S.aiLog.push({role:"q",text:q});
-  S.aiLog.push({role:"a",text:ans.text,cta:ans.cta});
+  S.aiLog.push({role:"a",text:ans.text,cta:ans.cta,source:ans.source});
   box.value="";
 }
 function renderAIModal(){
@@ -2458,10 +2479,12 @@ function renderAIModal(){
   var quicks=["SO-2609-018 現在狀態？","現在缺什麼要採購？","道林紙 現在庫存","宏泰印刷 有哪些訂單？","中華紙漿 交期多久？","追料源 牛皮紙"];
   var log=S.aiLog.length?S.aiLog.map(function(m){
     if(m.role==="q")return '<div class="ai-msg q">'+esc(m.text)+'</div>';
-    return '<div class="ai-msg a">'+esc(m.text)+(m.cta?'<button class="btn btn-sm" style="margin-top:6px" data-act="dashgo"'+dgAttrs(m.cta)+'>'+m.cta.label+' →</button>':'')+'</div>';
+    return '<div class="ai-msg a">'+esc(m.text)+
+      (m.source?'<div class="ai-src">📎 資料來源：'+esc(m.source)+'</div>':'')+
+      (m.cta?'<button class="btn btn-sm" style="margin-top:6px" data-act="dashgo"'+dgAttrs(m.cta)+'>'+m.cta.label+' →</button>':'')+'</div>';
   }).join(""):'<div class="dim" style="font-size:12.5px;padding:8px 2px">還沒有對話紀錄，點下面的範例試試看，或直接輸入問題。</div>';
   var body='<div class="pad" style="display:flex;flex-direction:column;gap:10px;height:58vh">'+
-      '<div class="hnote" style="border:none;padding:0">示範查詢方向，<b>非真正串接的語言模型</b>：只用關鍵字比對既有資料回答，<b>不會建立或修改任何單據</b>。'+hyp("正式功能會串接真正的語言模型，支援更廣的問法；是否開放 AI 直接建單／執行流程，待需求訪談確認——目前刻意只做唯讀查詢。")+'</div>'+
+      '<div class="hnote" style="border:none;padding:0">示範查詢方向，<b>非真正串接的語言模型</b>：只用關鍵字比對既有資料回答，<b>不會建立或修改任何單據</b>，每則回答都附「資料來源」，指不出真實資料就不回答。'+hyp("正式功能會串接真正的語言模型，支援更廣的問法；是否開放 AI 直接建單／執行流程，待需求訪談確認——目前刻意只做唯讀查詢。")+'</div>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap">'+quicks.map(function(qq){return '<button class="btn btn-sm" data-act="aiquick" data-q="'+esc(qq)+'">'+esc(qq)+'</button>';}).join("")+'</div>'+
       '<div class="ai-log" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:var(--r);padding:10px;background:var(--surface)">'+log+'</div>'+
       '<div style="display:flex;gap:8px"><input id="ai-input" type="text" placeholder="輸入問題，例如：SO-2609-018 現在狀態？" style="flex:1;font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--surface);color:var(--ink)">'+
