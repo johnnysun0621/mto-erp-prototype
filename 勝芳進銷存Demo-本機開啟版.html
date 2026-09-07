@@ -158,6 +158,12 @@ button.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;pos
 .tbl tbody tr.click:hover{background:var(--surface-3)}
 .donutseg{cursor:pointer;transition:opacity .12s}
 .donutseg:hover{opacity:.8}
+
+/* AI 助理（示範）對話氣泡 */
+.ai-msg{padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.5;max-width:88%;word-break:break-word}
+.ai-msg.q{align-self:flex-end;background:var(--accent-soft);color:var(--accent-ink)}
+.ai-msg.a{align-self:flex-start;background:var(--surface-2);color:var(--ink)}
+.ai-msg.a button{display:block}
 .tbl tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .tbl .r{text-align:right}
 .tbl .flash{animation:flash 1.6s ease-out}
@@ -314,6 +320,7 @@ button.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;pos
       <select id="dsmode" style="font:inherit;font-size:11px;border:none;background:none;color:var(--ink);cursor:pointer">
         <option value="std">標準</option><option value="big">大量</option>
       </select></label>
+    <button class="btn btn-sm" data-act="openai" title="示範查詢方向：查訂單、查總覽 KPI、查品項庫存／追料源。純查詢，不會建立或修改任何單據。">✨ AI 助理<span class="hyp" style="margin-left:5px" title="這是查詢方向的示範入口，不是真正串接的語言模型；只讀資料、不會自動建單或執行流程，正式功能待需求確認。">示範</span></button>
     <button class="btn btn-sm btn-icon" data-act="theme" title="切換淺色／深色">◐</button>
     <button class="btn btn-sm" data-act="reset">重置示範</button>
   </header>
@@ -639,6 +646,7 @@ function initState(){
     flash:[],draft:{cust:"C-101",due:d(4),lines:[]},tbl:{},focusSel:null,expand:{},modal:null,
     editingQt:null,qtDetailTab:"lines",planEdit:null,poDraft:null,
     masterTab:"item",mIt:null,mCu:null,mSu:null,mWh:null,mDraft:null,mDraftType:null,
+    aiLog:[],
     count:{"SH-CP250-636|WH-BL":"7"},reason:"盤盈盤虧"};
 }
 var S=initState();
@@ -2309,6 +2317,95 @@ function renderMasterCreateModal(){
     '<header><h2>'+titleMap[type]+'</h2><div style="flex:1"></div><button class="btn btn-sm" data-act="closemodal">關閉</button></header>'+body+'</div>';
 }
 
+/* ---- AI 助理（示範入口，不是完整 Agent） ----
+   規格：可展示「查訂單／查 KPI／追料源」的未來方向；避免承諾 AI 自動建單與執行流程。
+   所以這裡故意不接真正的語言模型，只用關鍵字／單號比對去查「已經存在的真實資料」再回答，
+   絕對不會寫入或修改任何單據——保留字面上的「唯讀」邊界，不讓展示效果過度承諾。 */
+function aiAnswer(raw){
+  var s=(raw||"").trim();
+  if(!s)return {text:"請輸入問題，或點下面的範例快速試試看。"};
+  /* ① 查單號：SO／QT／PO／CV／DN */
+  var m=s.match(/(SO|QT|PO|CV|DN)-\d{4}-\d{3}/i);
+  if(m){
+    var kind=m[1].toUpperCase(),no=m[0].toUpperCase();
+    if(kind==="SO"){var so=findSO(no); if(so){
+      var fs=fulfillmentStatusOf(so);
+      return {text:no+"（"+custName(so.cust)+"）訂單狀態「"+so.status+"」，履約狀態「"+fs.label+"」，要求交期 "+so.due+"。",
+        cta:{label:"查看訂單明細",view:"sales",tab:"so",no:no}};
+    }}
+    if(kind==="QT"){var qt=findQT(no); if(qt){
+      return {text:no+"（"+custName(qt.cust)+"）狀態「"+qt.status+"」"+(qt.so?"，已轉銷售單 "+qt.so:"，尚未轉單")+"。",
+        cta:{label:"查看報價明細",view:"sales",tab:"qt",no:no}};
+    }}
+    if(kind==="PO"){var po=findPO(no); if(po){
+      return {text:no+"（"+supName(po.sup)+"）狀態「"+po.status+"」，預計到貨 "+po.eta+"。",
+        cta:{label:"查看採購明細",view:"purchase",no:no}};
+    }}
+    if(kind==="CV"){var cv=findCV(no); if(cv){
+      return {text:no+" 裁切工單狀態「"+cv.status+"」，投入 "+cv.inQty+" 捲、產出 "+cv.outQty+" 令。",
+        cta:{label:"查看裁切明細",view:"conversion",no:no}};
+    }}
+    if(kind==="DN"){var dn=findDN(no); if(dn){
+      return {text:no+" 出貨單狀態「"+dn.status+"」。",cta:{label:"查看出貨明細",view:"delivery",no:no}};
+    }}
+    return {text:"查無單號 "+no+"，確認一下編號是否正確。"};
+  }
+  /* ② 查總覽 KPI */
+  if(/kpi|總覽|待處理|逾期|優先|指標/i.test(s)){
+    var mm=dashboardMetrics();
+    return {text:"目前總覽：待履約訂單 "+mm.kpi.openSO+" 張、今日應交 "+mm.kpi.dueToday+" 張、低於安全存量 "+mm.kpi.belowSafety+
+        " 項、待到貨採購 "+mm.kpi.openPO+" 張、缺料未下單 "+mm.kpi.shortage+" 項、待加工 "+mm.kpi.wip+" 張、未完成配送 "+mm.kpi.openDN+" 車。",
+      cta:{label:"查看總覽",view:"dash"}};
+  }
+  /* ③④ 查品項庫存／追料源：先比對問句裡有沒有提到品項料號或全名；
+     如果只打了紙種簡稱（例如「牛皮紙」），s 不會完整包住 it.grade（"工業用牛皮紙"），
+     這時候反過來看：把問句裡的觸發詞拿掉之後剩下的字，有沒有被 it.name／it.grade 包住。 */
+  var itHit=DB.items.filter(function(it){return s.indexOf(it.code)>=0||s.indexOf(it.name)>=0||(it.grade&&s.indexOf(it.grade)>=0);})[0];
+  if(!itHit){
+    var resid=s.replace(/追料源|溯源|哪裡來|哪一批|批號|庫存|可用量|可用|還有多少|剩多少|現在|查一下|幫我查|幫我|請問|查詢|查/g,"").trim();
+    if(resid)itHit=DB.items.filter(function(it){return it.name.indexOf(resid)>=0||(it.grade&&it.grade.indexOf(resid)>=0);})[0];
+  }
+  if(/追料源|溯源|哪裡來|哪一批|批號/.test(s)){
+    if(!itHit)return {text:"請告訴我要追哪個品項，例如「追料源 道林紙」。"};
+    var openPOsIt=DB.pos.filter(function(p){return p.status!=="已入庫"&&p.lines.some(function(l){return l.item===itHit.code;});});
+    var rollsIt=DB.rolls.filter(function(r){return r.item===itHit.code&&r.status==="在庫";});
+    return {text:itHit.name+" 目前在庫捲別／批次 "+rollsIt.length+" 筆"+(openPOsIt.length?"，另有 "+openPOsIt.length+" 張採購單在途":"")+
+        "。示範資料目前只追蹤到捲別編號，還沒有供應商批號欄位，正式功能待需求確認。",
+      cta:{label:"查看捲別明細",view:"inventory",tab:"roll"}};
+  }
+  if(itHit&&/庫存|可用|缺|剩多少/.test(s)){
+    var av=Math.max(0,available(itHit.code,FULFILL_WH)),oh=onHand(itHit.code,FULFILL_WH),inc=incoming(itHit.code);
+    return {text:itHit.name+"（履約倉）現有 "+q(oh)+" "+itHit.uom+"，扣掉已保留後可用 "+q(av)+" "+itHit.uom+"，在途 "+q(inc)+" "+itHit.uom+"。",
+      cta:{label:"查看庫存明細",view:"inventory",tab:"stock"}};
+  }
+  return {text:"這個示範入口目前只回答三種方向：①查單號（例如 SO-2609-018）②查總覽 KPI ③查品項庫存／追料源。其他問法還沒支援——正式上線會串接真正的語言模型去理解更多問法，這裡先展示方向，不做完整 Agent。"};
+}
+function askAI(){
+  var box=el("ai-input"); if(!box)return;
+  var q=box.value.trim(); if(!q)return;
+  var ans=aiAnswer(q);
+  S.aiLog.push({role:"q",text:q});
+  S.aiLog.push({role:"a",text:ans.text,cta:ans.cta});
+  box.value="";
+}
+function renderAIModal(){
+  if(S.modal!=="ai")return;
+  var quicks=["SO-2609-018 現在狀態？","查總覽 KPI","道林紙 80g 平張 現在庫存多少？","追料源 牛皮紙"];
+  var log=S.aiLog.length?S.aiLog.map(function(m){
+    if(m.role==="q")return '<div class="ai-msg q">'+esc(m.text)+'</div>';
+    return '<div class="ai-msg a">'+esc(m.text)+(m.cta?'<button class="btn btn-sm" style="margin-top:6px" data-act="dashgo"'+dgAttrs(m.cta)+'>'+m.cta.label+' →</button>':'')+'</div>';
+  }).join(""):'<div class="dim" style="font-size:12.5px;padding:8px 2px">還沒有對話紀錄，點下面的範例試試看，或直接輸入問題。</div>';
+  var body='<div class="pad" style="display:flex;flex-direction:column;gap:10px;height:58vh">'+
+      '<div class="hnote" style="border:none;padding:0">示範查詢方向，<b>非真正串接的語言模型</b>：只用關鍵字比對既有資料回答，<b>不會建立或修改任何單據</b>。'+hyp("正式功能會串接真正的語言模型，支援更廣的問法；是否開放 AI 直接建單／執行流程，待需求訪談確認——目前刻意只做唯讀查詢。")+'</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+quicks.map(function(qq){return '<button class="btn btn-sm" data-act="aiquick" data-q="'+esc(qq)+'">'+esc(qq)+'</button>';}).join("")+'</div>'+
+      '<div class="ai-log" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:var(--r);padding:10px;background:var(--surface)">'+log+'</div>'+
+      '<div style="display:flex;gap:8px"><input id="ai-input" type="text" placeholder="輸入問題，例如：SO-2609-018 現在狀態？" style="flex:1;font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:var(--r);background:var(--surface);color:var(--ink)">'+
+        '<button class="btn btn-primary" data-act="aiask">送出</button></div>'+
+    '</div>';
+  el("modal").innerHTML='<div class="sheet" role="dialog" aria-modal="true" aria-label="AI 助理">'+
+    '<header><h2>AI 助理<span class="hyp" style="margin-left:6px">示範</span></h2><div style="flex:1"></div><button class="btn btn-sm" data-act="closemodal">關閉</button></header>'+body+'</div>';
+}
+
 /* ---- 單據追溯 ---- */
 function openChain(soNo){
   var so=findSO(soNo);
@@ -2389,6 +2486,7 @@ function render(){
   if(S.modal==="createqt")renderCreateQuoteModal();
   if(S.modal==="createpo")renderCreatePOModal();
   if(S.modal==="newmaster")renderMasterCreateModal();
+  if(S.modal==="ai")renderAIModal();
   if(el("qcalc"))updateQuoteCalc();
   var ds=el("dsmode"); if(ds)ds.value=LARGE_DATASET_MODE?"big":"std";
   /* 表格搜尋框重繪後把游標接回去，打字不會中斷 */
@@ -2473,6 +2571,9 @@ document.addEventListener("click",function(e){
     render();return;
   }
   if(a==="delcustprice"){delCustPrice(b.dataset.cust,b.dataset.item);render();return;}
+  if(a==="openai"){S.modal="ai";render();el("modal").hidden=false;var aiIn=el("ai-input");if(aiIn)aiIn.focus();return;}
+  if(a==="aiask"){askAI();S.focusSel="#ai-input";render();return;}
+  if(a==="aiquick"){var qEl=el("ai-input");if(qEl)qEl.value=b.dataset.q;askAI();S.focusSel="#ai-input";render();return;}
   if(a==="addline"){
     S.draft.cust=el("f-cust").value;S.draft.due=el("f-due").value||S.draft.due;
     var okAdd=addDraftLine(el("f-item").value,parseFloat(el("f-qty").value)||0,el("f-uom").value);
@@ -2620,6 +2721,7 @@ document.addEventListener("input",onFormChange);
 document.addEventListener("change",onFormChange);
 document.addEventListener("keydown",function(e){
   if(e.key==="Escape"){el("modal").hidden=true;S.modal=null;el("toast").hidden=true;}
+  if(e.key==="Enter"&&e.target&&e.target.id==="ai-input"){askAI();S.focusSel="#ai-input";render();}
 });
 el("modal").addEventListener("click",function(e){if(e.target===el("modal")){el("modal").hidden=true;S.modal=null;}});
 render();
