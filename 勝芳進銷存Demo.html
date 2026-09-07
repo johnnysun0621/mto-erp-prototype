@@ -2343,14 +2343,79 @@ function aiAnswer(raw){
     }}
     return {text:"查無單號 "+no+"，確認一下編號是否正確。"};
   }
-  /* ② 查總覽 KPI */
-  if(/kpi|總覽|待處理|逾期|優先|指標/i.test(s)){
+  /* ② 缺料清單（多筆彙總，跟採購管理的「缺料建議」同一份資料） */
+  if(/缺什麼|缺料|需要採購|要買什麼|還缺/.test(s)){
+    var shortRows=shortageList().filter(function(r){return r.gap>0;});
+    if(!shortRows.length)return {text:"目前沒有尚待處理的缺料缺口。",cta:{label:"查看缺料建議",view:"purchase",tab:"shortage"}};
+    return {text:"目前有 "+shortRows.length+" 個品項有缺口，缺最多的前幾名："+shortRows.slice(0,3).map(function(r){
+        var it=item(r.item);return it.name+" 缺 "+q(r.gap)+" "+it.uom;}).join("、")+"。",
+      cta:{label:"查看缺料建議",view:"purchase",tab:"shortage"}};
+  }
+  /* ③ 低庫存／缺貨清單（多筆彙總） */
+  if(/低庫存|庫存偏低|快缺貨|哪些.*(低|缺貨)/.test(s)){
+    var lowRows=DB.items.filter(function(it){var av=available(it.code);return av>0&&av<it.safety;});
+    var outRows=DB.items.filter(function(it){return available(it.code)<=0;});
+    if(!lowRows.length&&!outRows.length)return {text:"目前所有品項庫存都在安全水位以上。",cta:{label:"查看庫存",view:"inventory",tab:"stock"}};
+    return {text:"低庫存 "+lowRows.length+" 項、缺貨 "+outRows.length+" 項："+outRows.concat(lowRows).slice(0,4).map(function(it){return it.name;}).join("、")+"。",
+      cta:{label:"查看庫存",view:"inventory",tab:"stock"}};
+  }
+  /* ④ 今日應交訂單清單 */
+  if(/今[天日].*交|應交.*今[天日]|哪些.*要交/.test(s)){
+    var dueTodayList=DB.sos.filter(function(x){return x.status!=="已出貨"&&x.status!=="已結案"&&x.due===d(0);});
+    if(!dueTodayList.length)return {text:"今天沒有應交但尚未出貨的訂單。",cta:{label:"查看銷售管理",view:"sales",tab:"so"}};
+    return {text:"今天應交的訂單有 "+dueTodayList.length+" 張："+dueTodayList.map(function(x){return x.no+"（"+custName(x.cust)+"）";}).join("、")+"。",
+      cta:{label:"查看銷售管理",view:"sales",tab:"so"}};
+  }
+  /* ⑤ 逾期採購清單 */
+  if(/逾期/.test(s)&&/採購/.test(s)){
+    var lateList=DB.pos.filter(function(p){return p.status!=="已入庫"&&p.eta<d(0);});
+    if(!lateList.length)return {text:"目前沒有逾期未到貨的採購單。",cta:{label:"查看採購管理",view:"purchase"}};
+    return {text:"逾期採購單 "+lateList.length+" 張："+lateList.map(function(p){return p.no+"（"+supName(p.sup)+"）";}).join("、")+"。",
+      cta:{label:"查看採購管理",view:"purchase"}};
+  }
+  /* ⑥ 裁切進行中清單 */
+  if(/裁切.*(進行|工單|加工)|加工中/.test(s)){
+    var wipList=DB.convs.filter(function(c){return c.status!=="已完成";});
+    if(!wipList.length)return {text:"目前沒有進行中的裁切工單。",cta:{label:"查看裁切管理",view:"conversion"}};
+    return {text:"進行中的裁切工單 "+wipList.length+" 張："+wipList.map(function(c){return c.no;}).join("、")+"。",
+      cta:{label:"查看裁切管理",view:"conversion"}};
+  }
+  /* ⑦ 出貨進度清單 */
+  if(/出貨.*(進度|還沒|尚未)|還沒出貨|尚未出貨|今[天日].*出貨/.test(s)){
+    var openDNs=DB.dns.filter(function(x){return x.status!=="已送達";});
+    if(!openDNs.length)return {text:"目前沒有尚未送達的出貨單。",cta:{label:"查看出貨管理",view:"delivery"}};
+    return {text:"尚未送達的出貨單 "+openDNs.length+" 張："+openDNs.map(function(x){return x.no+"（"+x.status+"）";}).join("、")+"。",
+      cta:{label:"查看出貨管理",view:"delivery"}};
+  }
+  /* ⑧ 客戶查詢：客戶名稱／代號 + 訂單／報價／專屬價關鍵字 */
+  var custHit=DB.customers.filter(function(c){return s.indexOf(c.name)>=0||s.indexOf(c.code)>=0;})[0];
+  if(custHit&&/訂單|報價|往來|專屬價|價格/.test(s)){
+    if(/專屬價|價格/.test(s)){
+      var cpKeys=Object.keys(custHit.prices||{});
+      if(!cpKeys.length)return {text:custHit.name+" 目前沒有設定客戶專屬價格，適用標準牌價。",cta:{label:"查看客戶主檔",view:"master",tab:"cust"}};
+      return {text:custHit.name+" 設定了 "+cpKeys.length+" 項專屬價格："+cpKeys.map(function(k){var it=item(k);return it?it.name+" "+money(custHit.prices[k]):k;}).join("、")+"。",
+        cta:{label:"查看客戶主檔",view:"master",tab:"cust"}};
+    }
+    var custQts=DB.quotes.filter(function(x){return x.cust===custHit.code&&x.status!=="已失效";});
+    var custSos=DB.sos.filter(function(x){return x.cust===custHit.code&&x.status!=="已出貨"&&x.status!=="已結案";});
+    return {text:custHit.name+" 目前有 "+custQts.length+" 張未失效報價、"+custSos.length+" 張未完成銷售訂單。",
+      cta:{label:"查看銷售管理",view:"sales",tab:"so"}};
+  }
+  /* ⑨ 供應商查詢：供應商名稱／代號 + 交期／採購關鍵字 */
+  var supHit=DB.suppliers.filter(function(x){return s.indexOf(x.name)>=0||s.indexOf(x.code)>=0;})[0];
+  if(supHit&&/交期|採購|訂單|往來/.test(s)){
+    var supPOs=DB.pos.filter(function(p){return p.sup===supHit.code&&p.status!=="已入庫";});
+    return {text:supHit.name+" 標準交期 "+supHit.lead+"，付款條件「"+supHit.terms+"」，目前有 "+supPOs.length+" 張未入庫採購單。",
+      cta:{label:"查看採購管理",view:"purchase"}};
+  }
+  /* ⑩ 查總覽 KPI（籠統問法的兜底彙總，放在具體清單類問法之後，避免「逾期」這種字被這裡先搶走） */
+  if(/kpi|總覽|待處理|優先|指標/i.test(s)){
     var mm=dashboardMetrics();
     return {text:"目前總覽：待履約訂單 "+mm.kpi.openSO+" 張、今日應交 "+mm.kpi.dueToday+" 張、低於安全存量 "+mm.kpi.belowSafety+
         " 項、待到貨採購 "+mm.kpi.openPO+" 張、缺料未下單 "+mm.kpi.shortage+" 項、待加工 "+mm.kpi.wip+" 張、未完成配送 "+mm.kpi.openDN+" 車。",
       cta:{label:"查看總覽",view:"dash"}};
   }
-  /* ③④ 查品項庫存／追料源：先比對問句裡有沒有提到品項料號或全名；
+  /* ⑪⑫ 查品項庫存／追料源：先比對問句裡有沒有提到品項料號或全名；
      如果只打了紙種簡稱（例如「牛皮紙」），s 不會完整包住 it.grade（"工業用牛皮紙"），
      這時候反過來看：把問句裡的觸發詞拿掉之後剩下的字，有沒有被 it.name／it.grade 包住。 */
   var itHit=DB.items.filter(function(it){return s.indexOf(it.code)>=0||s.indexOf(it.name)>=0||(it.grade&&s.indexOf(it.grade)>=0);})[0];
@@ -2371,7 +2436,7 @@ function aiAnswer(raw){
     return {text:itHit.name+"（履約倉）現有 "+q(oh)+" "+itHit.uom+"，扣掉已保留後可用 "+q(av)+" "+itHit.uom+"，在途 "+q(inc)+" "+itHit.uom+"。",
       cta:{label:"查看庫存明細",view:"inventory",tab:"stock"}};
   }
-  return {text:"這個示範入口目前只回答三種方向：①查單號（例如 SO-2609-018）②查總覽 KPI ③查品項庫存／追料源。其他問法還沒支援——正式上線會串接真正的語言模型去理解更多問法，這裡先展示方向，不做完整 Agent。"};
+  return {text:"這個示範入口目前支援幾種方向：查單號（例如 SO-2609-018）、查總覽 KPI、缺料／低庫存清單、今日應交／逾期採購、裁切與出貨進度、客戶或供應商往來、品項庫存與追料源。其他問法還沒支援——正式上線會串接真正的語言模型去理解更多問法，這裡先展示方向，不做完整 Agent。"};
 }
 function askAI(){
   var box=el("ai-input"); if(!box)return;
@@ -2383,7 +2448,7 @@ function askAI(){
 }
 function renderAIModal(){
   if(S.modal!=="ai")return;
-  var quicks=["SO-2609-018 現在狀態？","查總覽 KPI","道林紙 80g 平張 現在庫存多少？","追料源 牛皮紙"];
+  var quicks=["SO-2609-018 現在狀態？","現在缺什麼要採購？","道林紙 現在庫存","宏泰印刷 有哪些訂單？","中華紙漿 交期多久？","追料源 牛皮紙"];
   var log=S.aiLog.length?S.aiLog.map(function(m){
     if(m.role==="q")return '<div class="ai-msg q">'+esc(m.text)+'</div>';
     return '<div class="ai-msg a">'+esc(m.text)+(m.cta?'<button class="btn btn-sm" style="margin-top:6px" data-act="dashgo"'+dgAttrs(m.cta)+'>'+m.cta.label+' →</button>':'')+'</div>';
