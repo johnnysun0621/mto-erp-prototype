@@ -151,6 +151,8 @@ button.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;pos
 .tbl tr:last-child td{border-bottom:none}
 .tbl tbody tr.click{cursor:pointer}
 .tbl tbody tr.click:hover{background:var(--surface-3)}
+.donutseg{cursor:pointer;transition:opacity .12s}
+.donutseg:hover{opacity:.8}
 .tbl tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .tbl .r{text-align:right}
 .tbl .flash{animation:flash 1.6s ease-out}
@@ -1168,6 +1170,40 @@ function statRow(label,ct,color,attrs,zero){
   return '<button class="statrow'+(zero?' z':'')+'" data-act="dashgo"'+attrs+'>'+
     '<span class="lb">'+label+'</span><span class="ct"'+(color&&!zero?' style="color:'+color+'"':'')+'>'+n0(ct)+'</span></button>';
 }
+/* 圖例列：跟 statRow 一樣可點鑽研，但標籤前面多一個色塊，對應圓餅圖的切片顏色。 */
+function legendRow(label,ct,color,attrs,zero){
+  return '<button class="statrow'+(zero?' z':'')+'" data-act="dashgo"'+attrs+'>'+
+    '<span class="lb"><span aria-hidden="true" style="display:inline-block;width:9px;height:9px;border-radius:2px;background:'+(zero?"var(--line)":color)+';flex:none"></span>'+label+'</span>'+
+    '<span class="ct"'+(!zero?' style="color:'+color+'"':'')+'>'+n0(ct)+'</span></button>';
+}
+/* 庫存健康甜甜圈圖：正常／低庫存／缺貨三態互斥、加總等於品項總數，是少數真正適合圓餅圖的比例型資訊
+   （見「Dashboard 圖表不因形式直接改圓餅圖」的原則：只用在講得清楚比例關係的地方，不是每個數字都改圖表）。
+   色塊沿用既有的狀態色（--good/--warn/--crit），跟畫面其他地方的徽章顏色語意一致。
+   保留可點鑽研（圖形跟旁邊的圖例文字都能點），不讓圖表取代 Action-oriented Dashboard 的原有精神。 */
+function healthDonut(h){
+  var r=42,cx=54,cy=54,sw=15,circ=2*Math.PI*r,total=h.total||0;
+  var segs=[
+    {key:"ok",label:"正常",val:h.ok,color:"var(--good)"},
+    {key:"low",label:"低庫存",val:h.low,color:"var(--warn)"},
+    {key:"out",label:"缺貨",val:h.out,color:"var(--crit)"}
+  ];
+  var acc=0,arcs='';
+  segs.forEach(function(s){
+    if(!s.val)return;
+    var len=total>0?(s.val/total)*circ:0,gapPx=2,visible=Math.max(0,len-gapPx);
+    arcs+='<circle class="donutseg" cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+s.color+'" stroke-width="'+sw+'" '+
+      'stroke-dasharray="'+visible+' '+(circ-visible)+'" stroke-dashoffset="'+(circ-acc)+'" transform="rotate(-90 '+cx+' '+cy+')" '+
+      'data-act="dashgo"'+dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:s.key}})+'>'+
+      '<title>'+s.label+'　'+n0(s.val)+' 項（'+Math.round(total>0?s.val/total*100:0)+'%）</title></circle>';
+    acc+=len;
+  });
+  return '<svg width="108" height="108" viewBox="0 0 108 108" role="img" aria-label="庫存健康比例：正常 '+n0(h.ok)+' 項、低庫存 '+n0(h.low)+' 項、缺貨 '+n0(h.out)+' 項" style="flex:none">'+
+    '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--surface-2)" stroke-width="'+sw+'"></circle>'+
+    arcs+
+    '<text x="'+cx+'" y="'+(cy-3)+'" text-anchor="middle" font-size="20" font-weight="600" fill="var(--ink)" font-family="var(--mono)">'+n0(total)+'</text>'+
+    '<text x="'+cx+'" y="'+(cy+13)+'" text-anchor="middle" font-size="10" fill="var(--ink-3)">品項</text>'+
+    '</svg>';
+}
 function dgAttrs(o){
   var a='';
   if(o.view)a+=' data-view="'+o.view+'"';
@@ -1190,12 +1226,17 @@ function vDash(){
     kpi("未完成配送",m.kpi.openDN,"車","",{view:"delivery",tblkey:"dn",filters:{status:"open"}})+
   '</div>';
 
-  /* 庫存健康：三態互斥計數 + 補貨中（獨立輔助指標） */
+  /* 庫存健康：三態互斥計數（改甜甜圈圖）+ 補貨中（獨立輔助指標，不互斥，維持列表） */
   var health='<div class="card"><h3>庫存健康<span class="sp"></span><span class="dim" style="font-size:11px;font-weight:400">共 '+n0(h.total)+' 項</span></h3>'+
+    '<div class="pad" style="display:flex;gap:16px;align-items:center;padding-bottom:10px">'+
+      healthDonut(h)+
+      '<div class="statlist" style="flex:1;min-width:0">'+
+        legendRow("正常",h.ok,"var(--good)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"ok"}}),!h.ok)+
+        legendRow("低庫存",h.low,"var(--warn)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"low"}}),!h.low)+
+        legendRow("缺貨",h.out,"var(--crit)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"out"}}),!h.out)+
+      '</div>'+
+    '</div>'+
     '<div class="statlist">'+
-      statRow("正常",h.ok,"var(--good)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"ok"}}),!h.ok)+
-      statRow("低庫存",h.low,"var(--warn)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"low"}}),!h.low)+
-      statRow("缺貨",h.out,"var(--crit)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"out"}}),!h.out)+
       '<div class="statdiv"></div>'+
       statRow("補貨中",h.inc,"var(--info)",dgAttrs({view:"inventory",tab:"stock",tblkey:"inv",filters:{health:"inc"}}),!h.inc)+
     '</div>'+
